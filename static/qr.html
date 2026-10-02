@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>O Ses Çiğköfte - Karekod Sipariş Menüsü</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #D32F2F;
+      --primary-dark: #9A0007;
+      --accent-gold: #FFB300;
+      --bg-dark: #0F172A;
+      --card-bg: #FFFFFF;
+      --text-dark: #1E293B;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #F8FAFC;
+      color: var(--text-dark);
+      padding-bottom: 90px;
+    }
+
+    /* Header */
+    .qr-header {
+      background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+      color: white;
+      padding: 20px 16px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      border-bottom: 3px solid var(--primary);
+    }
+
+    .qr-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .qr-brand img, .qr-brand .logo-icon {
+      font-size: 2rem;
+    }
+
+    .qr-brand h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #FFFFFF;
+    }
+
+    .qr-brand span {
+      color: var(--accent-gold);
+    }
+
+    .table-badge {
+      display: inline-block;
+      margin-top: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent-gold);
+      border: 1px solid rgba(255,179,0,0.3);
+    }
+
+    /* Category Nav Bar */
+    .cat-scroll-container {
+      background: #FFFFFF;
+      position: sticky;
+      top: 80px;
+      z-index: 90;
+      padding: 12px 16px;
+      overflow-x: auto;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      gap: 8px;
+      scrollbar-width: none;
+    }
+    .cat-scroll-container::-webkit-scrollbar { display: none; }
+
+    .cat-pill {
+      background: #F1F5F9;
+      color: var(--text-dark);
+      padding: 8px 16px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cat-pill.active {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+    }
+
+    /* Product Section */
+    .menu-container {
+      padding: 16px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .category-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 16px 0 12px 0;
+      color: var(--text-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .product-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      border: 1px solid #F1F5F9;
+      transition: transform 0.15s ease;
+    }
+    .product-card:active {
+      transform: scale(0.98);
+    }
+
+    .p-icon-box {
+      width: 68px;
+      height: 68px;
+      background: #FFF5F5;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      flex-shrink: 0;
+    }
+
+    .p-info {
+      flex: 1;
+    }
+
+    .p-title {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text-dark);
+    }
+
+    .p-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+
+    .p-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .p-price {
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--primary);
+    }
+
+    .btn-add {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(211, 47, 47, 0.25);
+    }
+
+    /* Fixed Bottom Cart Bar */
+    .cart-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #FFFFFF;
+      padding: 12px 16px;
+      box-shadow: 0 -6px 20px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 200;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .cart-summary-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cart-count-badge {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .cart-total-price {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .btn-checkout-qr {
+      background: linear-gradient(135deg, #D32F2F 0%, #B71C1C 100%);
+      color: white;
+      border: none;
+      padding: 12px 22px;
+      border-radius: 30px;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(211, 47, 47, 0.4);
+    }
+
+    /* Modal Overlay & Drawer */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 300;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-drawer {
+      background: white;
+      width: 100%;
+      max-width: 600px;
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.25s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .drawer-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .drawer-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-dark);
+    }
+
+    .btn-close-drawer {
+      background: #F1F5F9;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .drawer-body {
+      padding: 16px 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .opt-group-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin: 14px 0 8px 0;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .opt-subtext {
+      font-size: 0.75rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .opt-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .opt-chip {
+      background: #F8FAFC;
+      border: 1.5px solid var(--border-color);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .opt-chip.selected {
+      border-color: var(--primary);
+      background: #FFF5F5;
+      color: var(--primary);
+    }
+
+    .drawer-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-color);
+      background: #FAFAFA;
+    }
+
+    .form-input-qr {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border-color);
+      border-radius: 12px;
+      font-size: 0.95rem;
+      margin-bottom: 10px;
+      outline: none;
+    }
+    .form-input-qr:focus {
+      border-color: var(--primary);
+    }
+
+    /* Success Order View */
+    .success-card {
+      text-align: center;
+      padding: 30px 20px;
+    }
+
+    .success-icon {
+      font-size: 4rem;
+      margin-bottom: 12px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="qr-header">
+    <div class="qr-brand">
+      <span class="logo-icon">🌶️</span>
+      <h1>O SES <span>ÇİĞKÖFTE</span></h1>
+    </div>
+    <div class="table-badge" id="qr-table-tag">📱 Mobil Karekod Sipariş Menüsü</div>
+  </header>
+
+  <!-- Category Pills Nav -->
+  <nav class="cat-scroll-container" id="qr-cat-nav">
+    <!-- Rendered dynamically -->
+  </nav>
+
+  <!-- Product Menu Items -->
+  <main class="menu-container" id="qr-menu-container">
+    <div style="text-align:center; padding: 40px; color:#666;">Menü yükleniyor... 🌶️</div>
+  </main>
+
+  <!-- Fixed Bottom Cart Bar -->
+  <div class="cart-bar" id="qr-cart-bar" style="display: none;">
+    <div class="cart-summary-text">
+      <span class="cart-count-badge" id="qr-cart-count">0 Ürün Seçildi</span>
+      <span class="cart-total-price" id="qr-cart-total">₺0.00</span>
+    </div>
+    <button class="btn-checkout-qr" onclick="qrApp.openCheckoutDrawer()">
+      🛒 Sepeti Göre Sipariş Et
+    </button>
+  </div>
+
+  <!-- Product Customization Drawer -->
+  <div class="modal-overlay" id="modal-product-options">
+    <div class="modal-drawer">
+      <div class="drawer-header">
+        <div class="drawer-title" id="opt-modal-p-title">Ürün Seçenekleri</div>
+        <button class="btn-close-drawer" onclick="qrApp.closeModal('modal-product-options')">✕</button>
+      </div>
+      <div class="drawer-body" id="opt-modal-body">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="drawer-footer">
+        <button class="btn-checkout-qr" style="width: 100%; justify-content: center;" onclick="qrApp.confirmProductWithOptions()">
+          Sepete Ekle - <span id="opt-modal-total-btn">₺0.00</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Checkout Drawer -->
+  <div class="modal-overlay" id="modal-checkout-drawer">
+    <div class="modal-drawer">
+      <div class="drawer-header">
+        <div class="drawer-title">📋 Siparişi Tamamla</div>
+        <button class="btn-close-drawer" onclick="qrApp.closeModal('modal-checkout-drawer')">✕</button>
+      </div>
+      <div class="drawer-body">
+        <div id="checkout-items-list" style="margin-bottom: 16px;"></div>
+
+        <div style="margin-top: 14px;">
+          <label style="font-size: 0.85rem; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Adınız Soyadınız / Masa No</label>
+          <input type="text" id="qr-cust-name" class="form-input-qr" placeholder="Örn: Ahmet Bey / Masa 4" required />
+
+          <label style="font-size: 0.85rem; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Telefon Numarası (İsteğe Bağlı)</label>
+          <input type="tel" id="qr-cust-phone" class="form-input-qr" placeholder="05XXXXXXXXX" />
+
+          <label style="font-size: 0.85rem; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Ödeme Yöntemi Tercihi</label>
+          <select id="qr-payment-method" class="form-input-qr">
+            <option value="KASA_ODEME">Tezgahta / Kasada Öde (Nakit veya Kredi Kartı)</option>
+            <option value="MASA_ODEME">Masada Öde</option>
+          </select>
+
+          <label style="font-size: 0.85rem; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Sipariş Notu</label>
+          <input type="text" id="qr-order-note" class="form-input-qr" placeholder="Örn: Yeşillik bol olsun, sos dökülmesin..." />
+        </div>
+      </div>
+      <div class="drawer-footer">
+        <button class="btn-checkout-qr" style="width: 100%; justify-content: center; font-size: 1.1rem;" onclick="qrApp.submitQROrder()">
+          🚀 Siparişi Kasaya Gönder (<span id="checkout-total-btn">₺0.00</span>)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success & Status Tracking Drawer -->
+  <div class="modal-overlay" id="modal-success-drawer">
+    <div class="modal-drawer">
+      <div class="drawer-body success-card">
+        <div class="success-icon" id="status-icon">⏳</div>
+        <h2 style="color: var(--primary); font-size: 1.5rem; font-weight: 800;" id="status-title">Siparişiniz Kasaya İletildi!</h2>
+        <p style="color: #64748B; margin-top: 8px; font-size: 0.95rem;" id="status-desc">
+          Siparişiniz kasadaki görevlinin onayını beklemektedir. Kasa görevlisi onayladığı an fişiniz basılıp hazırlanacaktır!
+        </p>
+        <div style="background: #FFFBEB; border: 1.5px dashed #F59E0B; padding: 14px; border-radius: 12px; margin: 16px 0; font-weight: 700;">
+          Sipariş Durumu: <span id="success-order-status" style="color: #B45309; font-size: 1.1rem;">⏳ Kasada Onay Bekliyor...</span>
+        </div>
+        <button class="btn-checkout-qr" style="width: 100%; justify-content: center;" onclick="location.reload()">
+          Yeni Sipariş Ver
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript App Logic -->
+  <script>
+    class QRMenuApp {
+      constructor() {
+        this.products = [];
+        this.categories = [];
+        this.optionGroups = [];
+        this.cart = [];
+        this.activeProduct = null;
+        this.selectedOptions = {};
+        
+        this.init();
+      }
+
+      async init() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tableParam = urlParams.get('table') || urlParams.get('masa');
+        if (tableParam) {
+          document.getElementById('qr-table-tag').innerText = `📍 ${tableParam} Sipariş Menüsü`;
+          document.getElementById('qr-cust-name').value = tableParam;
+        }
+
+        await Promise.all([
+          this.fetchCategories(),
+          this.fetchProducts(),
+          this.fetchOptions()
+        ]);
+
+        this.renderCategoryPills();
+        this.renderMenu();
+      }
+
+      async fetchCategories() {
+        try {
+          const res = await fetch('/api/categories');
+          this.categories = await res.json();
+        } catch (e) { console.error(e); }
+      }
+
+      async fetchProducts() {
+        try {
+          const res = await fetch('/api/products');
+          this.products = await res.json();
+        } catch (e) { console.error(e); }
+      }
+
+      async fetchOptions() {
+        try {
+          const res = await fetch('/api/options');
+          this.optionGroups = await res.json();
+        } catch (e) { console.error(e); }
+      }
+
+      renderCategoryPills() {
+        const nav = document.getElementById('qr-cat-nav');
+        let html = `<button class="cat-pill active" onclick="qrApp.filterCategory('all', this)">✨ Tüm Menü</button>`;
+        this.categories.forEach(c => {
+          html += `<button class="cat-pill" onclick="qrApp.filterCategory(${c.id}, this)">${c.icon || ''} ${c.name}</button>`;
+        });
+        nav.innerHTML = html;
+      }
+
+      filterCategory(catId, btnEl) {
+        document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
+        if (btnEl) btnEl.classList.add('active');
+        this.renderMenu(catId);
+      }
+
+      renderMenu(catIdFilter = 'all') {
+        const container = document.getElementById('qr-menu-container');
+        let filteredProducts = this.products;
+        if (catIdFilter !== 'all') {
+          filteredProducts = this.products.filter(p => p.category_id === catIdFilter);
+        }
+
+        if (filteredProducts.length === 0) {
+          container.innerHTML = `<div style="text-align:center; padding: 40px; color:#666;">Bu kategoride ürün bulunamadı.</div>`;
+          return;
+        }
+
+        // Group by category
+        const groups = {};
+        filteredProducts.forEach(p => {
+          const catName = p.category_name || 'Menü';
+          if (!groups[catName]) groups[catName] = [];
+          groups[catName].push(p);
+        });
+
+        let html = '';
+        for (const [catName, prods] of Object.entries(groups)) {
+          html += `<div class="category-title">🌶️ ${catName}</div>`;
+          prods.forEach(p => {
+            html += `
+              <div class="product-card">
+                <div class="p-icon-box">${p.image_symbol || '🌯'}</div>
+                <div class="p-info">
+                  <div class="p-title">${p.name}</div>
+                  <div class="p-desc">${p.description || ''}</div>
+                  <div class="p-bottom">
+                    <span class="p-price">₺${p.price.toFixed(2)}</span>
+                    <button class="btn-add" onclick="qrApp.openProductModal(${p.id})">➕ Ekle</button>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+        }
+        container.innerHTML = html;
+      }
+
+      openProductModal(productId) {
+        this.activeProduct = this.products.find(p => p.id === productId);
+        if (!this.activeProduct) return;
+
+        if (!this.activeProduct.has_options || this.optionGroups.length === 0) {
+          // Direct add without options
+          this.addToCart(this.activeProduct, [], 0.0);
+          return;
+        }
+
+        document.getElementById('opt-modal-p-title').innerText = `🌶️ ${this.activeProduct.name}`;
+        this.selectedOptions = {};
+
+        // Pre-select defaults
+        this.optionGroups.forEach(g => {
+          this.selectedOptions[g.id] = [];
+          g.items.forEach(i => {
+            if (i.is_default) {
+              this.selectedOptions[g.id].push(i);
+            }
+          });
+        });
+
+        this.renderOptionDrawerBody();
+        this.openModal('modal-product-options');
+      }
+
+      renderOptionDrawerBody() {
+        const body = document.getElementById('opt-modal-body');
+        let html = '';
+
+        this.optionGroups.forEach(g => {
+          let subtext = '';
+          if (g.type === 'SINGLE') subtext = '(1 Adet Seçebilirsiniz)';
+          else if (g.free_limit > 0) subtext = `(İlk ${g.free_limit} malzeme ücretsiz, sonrası +₺${g.extra_fee.toFixed(2)})`;
+
+          html += `
+            <div class="opt-group-title">
+              <span>${g.name}</span>
+              <span class="opt-subtext">${subtext}</span>
+            </div>
+            <div class="opt-grid">
+          `;
+
+          g.items.forEach(item => {
+            const isSelected = (this.selectedOptions[g.id] || []).some(x => x.id === item.id);
+            const extraTag = item.extra_price > 0 ? ` (+₺${item.extra_price})` : '';
+
+            html += `
+              <div class="opt-chip ${isSelected ? 'selected' : ''}" onclick="qrApp.toggleOption(${g.id}, ${item.id})">
+                <span>${item.name}${extraTag}</span>
+                <span>${isSelected ? '✓' : '+'}</span>
+              </div>
+            `;
+          });
+
+          html += `</div>`;
+        });
+
+        body.innerHTML = html;
+        this.updateModalPriceButton();
+      }
+
+      toggleOption(groupId, itemId) {
+        const group = this.optionGroups.find(g => g.id === groupId);
+        const item = group.items.find(i => i.id === itemId);
+        if (!group || !item) return;
+
+        if (group.type === 'SINGLE') {
+          this.selectedOptions[groupId] = [item];
+        } else {
+          const idx = (this.selectedOptions[groupId] || []).findIndex(x => x.id === item.id);
+          if (idx >= 0) {
+            this.selectedOptions[groupId].splice(idx, 1);
+          } else {
+            if (!this.selectedOptions[groupId]) this.selectedOptions[groupId] = [];
+            this.selectedOptions[groupId].push(item);
+          }
+        }
+        this.renderOptionDrawerBody();
+      }
+
+      calculateCurrentModalTotal() {
+        if (!this.activeProduct) return 0.0;
+        let total = this.activeProduct.price;
+
+        this.optionGroups.forEach(g => {
+          const selected = this.selectedOptions[g.id] || [];
+          // Extra prices
+          selected.forEach(i => {
+            if (i.extra_price > 0) total += i.extra_price;
+          });
+          // Free limit exceed calculation
+          if (g.type === 'MULTIPLE' && g.free_limit > 0 && selected.length > g.free_limit) {
+            const exceedCount = selected.length - g.free_limit;
+            total += (exceedCount * g.extra_fee);
+          }
+        });
+
+        return total;
+      }
+
+      updateModalPriceButton() {
+        const total = this.calculateCurrentModalTotal();
+        document.getElementById('opt-modal-total-btn').innerText = `₺${total.toFixed(2)}`;
+      }
+
+      confirmProductWithOptions() {
+        const selectedList = [];
+        this.optionGroups.forEach(g => {
+          const selected = this.selectedOptions[g.id] || [];
+          selected.forEach(i => {
+            let label = i.name;
+            if (i.extra_price > 0) label += ` (+₺${i.extra_price.toFixed(2)})`;
+            selectedList.push(label);
+          });
+        });
+
+        const unitPrice = this.calculateCurrentModalTotal();
+        this.addToCart(this.activeProduct, selectedList, unitPrice);
+        this.closeModal('modal-product-options');
+      }
+
+      addToCart(product, selectedOptionsList, unitPrice) {
+        const price = unitPrice > 0 ? unitPrice : product.price;
+        const optionsSummary = selectedOptionsList.join(', ');
+
+        this.cart.push({
+          productId: product.id,
+          productName: product.name,
+          unitPrice: price,
+          quantity: 1,
+          optionsSummary: optionsSummary,
+          totalPrice: price
+        });
+
+        this.renderCartBar();
+      }
+
+      renderCartBar() {
+        const bar = document.getElementById('qr-cart-bar');
+        if (this.cart.length === 0) {
+          bar.style.display = 'none';
+          return;
+        }
+
+        const count = this.cart.length;
+        const total = this.cart.reduce((sum, i) => sum + i.totalPrice, 0);
+
+        document.getElementById('qr-cart-count').innerText = `${count} Adet Seçildi`;
+        document.getElementById('qr-cart-total').innerText = `₺${total.toFixed(2)}`;
+        bar.style.display = 'flex';
+      }
+
+      openCheckoutDrawer() {
+        const container = document.getElementById('checkout-items-list');
+        let html = '';
+
+        this.cart.forEach((item, index) => {
+          html += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px 0; border-bottom: 1px solid #E2E8F0;">
+              <div>
+                <div style="font-weight:700; font-size:0.95rem;">${item.productName}</div>
+                ${item.optionsSummary ? `<div style="font-size:0.75rem; color:#64748B;">${item.optionsSummary}</div>` : ''}
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-weight:800; color:var(--primary);">₺${item.totalPrice.toFixed(2)}</span>
+                <button style="background:none; border:none; color:#D32F2F; cursor:pointer; font-weight:700;" onclick="qrApp.removeFromCart(${index})">✕</button>
+              </div>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+        const total = this.cart.reduce((sum, i) => sum + i.totalPrice, 0);
+        document.getElementById('checkout-total-btn').innerText = `₺${total.toFixed(2)}`;
+        this.openModal('modal-checkout-drawer');
+      }
+
+      removeFromCart(index) {
+        this.cart.splice(index, 1);
+        this.renderCartBar();
+        if (this.cart.length === 0) {
+          this.closeModal('modal-checkout-drawer');
+        } else {
+          this.openCheckoutDrawer();
+        }
+      }
+
+      async submitQROrder() {
+        if (this.cart.length === 0) return;
+
+        const custName = document.getElementById('qr-cust-name').value.trim() || 'Mobil Karekod Müşterisi';
+        const custPhone = document.getElementById('qr-cust-phone').value.trim() || '';
+        const paymentMethod = document.getElementById('qr-payment-method').value;
+        const note = document.getElementById('qr-order-note').value.trim();
+
+        const subtotal = this.cart.reduce((sum, i) => sum + i.totalPrice, 0);
+
+        const orderPayload = {
+          customer_phone: custPhone,
+          customer_name: custName,
+          customer_address: 'Karekod Mobil Sipariş',
+          source: 'KAREKOD_MUSTERI',
+          subtotal: subtotal,
+          discount_amount: 0.0,
+          discount_type: 'NONE',
+          total_amount: subtotal,
+          payment_method: paymentMethod === 'MASA_ODEME' ? 'VERESİYE' : 'NAKIT',
+          note: note ? `📱 [KAREKOD MÜŞTERİ SİPARİŞİ] ${note}` : '📱 [KAREKOD MÜŞTERİ SİPARİŞİ]',
+          items: this.cart.map(item => ({
+            product_id: item.productId,
+            product_name: item.productName,
+            unit_price: item.unitPrice,
+            quantity: item.quantity,
+            options_summary: item.optionsSummary,
+            total_price: item.totalPrice
+          }))
+        };
+
+        try {
+          const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderPayload)
+          });
+
+          if (!res.ok) throw new Error('Sipariş gönderilemedi');
+
+          const order = await res.json();
+          this.cart = [];
+          this.renderCartBar();
+          this.closeModal('modal-checkout-drawer');
+
+          this.openModal('modal-success-drawer');
+          this.startOrderStatusTracker(order.id);
+
+        } catch (err) {
+          alert('Sipariş iletilirken hata oluştu. Lütfen tekrar deneyin.');
+        }
+      }
+
+      startOrderStatusTracker(orderId) {
+        if (this.statusInterval) clearInterval(this.statusInterval);
+        
+        this.statusInterval = setInterval(async () => {
+          try {
+            const res = await fetch(`/api/orders/${orderId}`);
+            if (!res.ok) return;
+            const order = await res.json();
+
+            const statusIcon = document.getElementById('status-icon');
+            const statusTitle = document.getElementById('status-title');
+            const statusDesc = document.getElementById('status-desc');
+            const statusText = document.getElementById('success-order-status');
+
+            if (order.order_status === 'TAMAMLANDI') {
+              if (statusIcon) statusIcon.innerText = '🎉';
+              if (statusTitle) statusTitle.innerText = 'Siparişiniz Onaylandı!';
+              if (statusDesc) statusDesc.innerHTML = `Sipariş <strong>#${order.order_number}</strong> kasada onaylandı ve fişiniz basıldı 🖨️. Lezzetli çiğ köfteniz hazırlanıyor!`;
+              if (statusText) {
+                statusText.innerText = '🟢 Onaylandı - Fiş Basıldı 🖨️';
+                statusText.style.color = '#059669';
+              }
+              clearInterval(this.statusInterval);
+            } else if (order.order_status === 'IPTAL') {
+              if (statusIcon) statusIcon.innerText = '❌';
+              if (statusTitle) statusTitle.innerText = 'Sipariş İptal Edildi';
+              if (statusDesc) statusDesc.innerText = 'Siparişiniz kasa tarafından iptal edilmiştir. Lütfen görevli ile iletişime geçiniz.';
+              if (statusText) {
+                statusText.innerText = '🔴 İptal Edildi';
+                statusText.style.color = '#D32F2F';
+              }
+              clearInterval(this.statusInterval);
+            }
+          } catch (e) {}
+        }, 3000);
+      }
+
+      openModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'flex';
+      }
+
+      closeModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      }
+    }
+
+    const qrApp = new QRMenuApp();
+  </script>
+</body>
+</html>

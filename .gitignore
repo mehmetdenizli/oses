@@ -1,0 +1,28 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database Files
+*.db
+*.db-shm
+*.db-wal
+
+# Log Files
+*.log
+tunnel.log
+
+# Binaries & Tooling
+cloudflared
+cloudflared.exe
+get-pip*.py
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/

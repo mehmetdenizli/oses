@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>O Ses Çiğköfte - POS & Hızlı Satış Sistemi</title>
+
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+
+  <!-- Top Navigation / Header -->
+  <header class="pos-header">
+    <div class="brand-title">
+      <div class="brand-logo">🌶️</div>
+      <div class="brand-text">
+        <h1>O SES ÇİĞKÖFTE</h1>
+        <span>HIZLI KASA & ADİSYON POS</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-header" id="qr-pending-badge" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color:white; display:none;" onclick="app.openQRPendingModal()">
+        📱 <span id="qr-pending-count">0</span> Karekod Sipariş Onayı Bekliyor!
+      </button>
+      <button class="btn-header" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color:white;"
+        onclick="app.openQRGeneratorModal()">
+        📱 Karekod (QR) Menü
+      </button>
+      <button class="btn-header" onclick="app.openAdminProductsModal()">
+        ⚙️ Ürün & Opsiyon Yönetimi
+      </button>
+      <button class="btn-header" onclick="app.openDailyStatsModal()">
+        📊 Raporlar & Gün Sonu Özeti
+      </button>
+      <button class="btn-header" onclick="app.openCustomerListModal()">
+        👥 Müşteri Rehberi
+      </button>
+      <button class="btn-header btn-external" onclick="app.openExternalOrderModal()">
+        🛵 Dış Sipariş Simülatörü
+      </button>
+    </div>
+  </header>
+
+  <!-- POS Main Layout -->
+  <main class="pos-layout">
+
+    <!-- Left Section: Menu & Customer Search -->
+    <section class="left-panel">
+
+      <!-- Customer Search Bar -->
+      <div class="customer-bar">
+        <div class="customer-input-group">
+          <input type="tel" id="customer-phone-input" class="phone-search-input"
+            placeholder="📞 Müşteri Telefonu Girin (Örn: 05321234567)..."
+            onkeyup="if(event.key === 'Enter') app.searchOrSelectCustomer()" />
+          <button class="btn-search" onclick="app.searchOrSelectCustomer()">
+            🔍 Bul / Ekle
+          </button>
+        </div>
+
+        <!-- Selected Active Customer Box -->
+        <div id="active-customer-box" class="active-customer-card" style="display: none;">
+          <div class="customer-info-left">
+            <div class="customer-info-name">
+              <span>👤</span> <span id="cust-card-name">Ahmet Yılmaz</span>
+              <span id="cust-card-badge" class="customer-badge">5 Sipariş</span>
+            </div>
+            <div class="customer-info-phone" id="cust-card-phone">0532 100 2030</div>
+            <div class="customer-info-addr" id="cust-card-addr">Atatürk Mah. No: 14 Kadıköy</div>
+          </div>
+          <button class="btn-clear-customer" title="Müşteriyi Sepetten Çıkar"
+            onclick="app.clearSelectedCustomer()">✕</button>
+        </div>
+      </div>
+
+      <!-- Category Tabs Filter -->
+      <div class="category-tabs" id="category-tabs-container">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Product Cards Grid -->
+      <div class="product-grid-container">
+        <div class="product-grid" id="product-grid-container">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Section: Live Adisyon / Cart -->
+    <section class="right-panel">
+      <div class="cart-header">
+        <div class="cart-title">
+          📋 Live Adisyon <span>(Sepet)</span>
+        </div>
+        <button class="btn-clear-cart" onclick="app.clearCart()">Sepeti Temizle</button>
+      </div>
+
+      <!-- Cart Items Container -->
+      <div class="cart-items-container" id="cart-items-container">
+        <div class="cart-empty-state">
+          <div class="cart-empty-icon">🌶️</div>
+          <div>Henüz sepete ürün eklenmedi.</div>
+          <small style="color: #94A3B8;">Sol taraftaki menüden ürün kartlarına tıklayarak adisyona
+            ekleyebilirsiniz.</small>
+        </div>
+      </div>
+
+      <!-- Cart Summary & Payment Footer -->
+      <div class="cart-footer">
+
+        <!-- Discount Buttons -->
+        <div class="discount-bar">
+          <button class="discount-btn" id="disc-none" onclick="app.setDiscount('NONE')">İndirim Yok</button>
+          <button class="discount-btn" id="disc-10" onclick="app.setDiscount('PERCENT', 10)">%10 İnd.</button>
+          <button class="discount-btn" id="disc-20" onclick="app.setDiscount('PERCENT', 20)">%20 İnd.</button>
+          <button class="discount-btn" id="disc-custom" onclick="app.promptCustomDiscount()">Özel TL</button>
+          <button class="discount-btn" id="disc-ikram" onclick="app.setDiscount('IKRAM', 100)">🎁 İkram</button>
+        </div>
+
+        <!-- Summary Totals -->
+        <div class="summary-rows">
+          <div class="summary-row">
+            <span>Ara Toplam:</span>
+            <span id="subtotal-val">₺0.00</span>
+          </div>
+          <div class="summary-row discount-applied" id="discount-row" style="display: none;">
+            <span id="discount-label">İndirim (%10):</span>
+            <span id="discount-val">-₺0.00</span>
+          </div>
+          <div class="summary-row total-row">
+            <span>TOPLAM:</span>
+            <span class="total-amount" id="total-val">₺0.00</span>
+          </div>
+        </div>
+
+        <!-- Payment Method Tabs -->
+        <div class="payment-selector">
+          <div class="payment-tab active" id="pay-nakit" onclick="app.setPaymentMethod('NAKIT')">
+            <span>💵</span> Nakit
+          </div>
+          <div class="payment-tab" id="pay-kredi" onclick="app.setPaymentMethod('KREDI_KART')">
+            <span>💳</span> Kredi Kartı
+          </div>
+          <div class="payment-tab" id="pay-veresiye" onclick="app.setPaymentMethod('VERESIYE')">
+            <span>📝</span> Veresiye
+          </div>
+        </div>
+
+        <!-- Submit & Print Button -->
+        <button class="btn-checkout" id="btn-checkout" onclick="app.completeAndPrintOrder()">
+          🖨️ Siparişi Tamamla & Yazdır (80mm)
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Müşteri Kayıt Defteri & Rehber Modalı -->
+  <div class="modal-overlay" id="modal-customer-list">
+    <div class="modal-card" style="max-width: 760px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          📖 Müşteri Kayıt Defteri & Rehber
+        </div>
+        <button class="btn-close-modal" onclick="app.closeModal('modal-customer-list')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
+          <input type="text" id="cust-dir-search" class="form-input" style="flex: 1;"
+            placeholder="Müşteri adı veya telefon ile ara..." onkeyup="app.renderCustomerDirectory(this.value)" />
+          <button class="btn-primary" style="white-space: nowrap;" onclick="app.openNewCustomerFormFromDir()">
+            ➕ Yeni Müşteri Ekle
+          </button>
+        </div>
+
+        <div style="max-height: 420px; overflow-y: auto;" id="cust-dir-list-container">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New / Edit Customer Registration Modal -->
+  <div class="modal-overlay" id="modal-customer">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title" id="cust-modal-title">
+          👤 Müşteri Kaydı / Düzenle
+        </div>
+        <button class="btn-close-modal" onclick="app.closeModal('modal-customer')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-cust-old-phone" />
+        <div class="form-group">
+          <label class="form-label">Telefon Numarası (Primary Key)</label>
+          <input type="tel" id="new-cust-phone" class="form-input" placeholder="05XXXXXXXXX" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Müşteri Adı Soyadı</label>
+          <input type="text" id="new-cust-name" class="form-input" placeholder="Örn: Mehmet Öz" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Teslimat Adresi</label>
+          <textarea id="new-cust-address" class="form-textarea" rows="3"
+            placeholder="Mahalle, Sokak, Bina No, Daire No, İlçe..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sipariş / Müşteri Notu</label>
+          <input type="text" id="new-cust-notes" class="form-input" placeholder="Örn: Zile basmayın bebek uyuyor..." />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="app.closeModal('modal-customer')">İptal</button>
+        <button class="btn-primary" onclick="app.saveNewCustomer()">Kaydet & İşle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Raporlar, Gün Sonu Özeti ve Satış Analiz Modalı -->
+  <div class="modal-overlay" id="modal-daily-stats">
+    <div class="modal-card" style="max-width: 880px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          📊 Raporlar, Satış Analizi & Gün Sonu Özeti
+        </div>
+        <button class="btn-close-modal" onclick="app.closeModal('modal-daily-stats')">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <div
+          style="display: flex; gap: 10px; align-items: center; justify-content: space-between; background: #F1F5F9; padding: 10px 14px; border-radius: 12px; margin-bottom: 16px;">
+          <div style="display: flex; gap: 8px;">
+            <button class="category-tab active" id="report-period-btn-daily" onclick="app.switchReportPeriod('daily')">
+              📅 Bugün (Günlük Özeti)
+            </button>
+            <button class="category-tab" id="report-period-btn-monthly" onclick="app.switchReportPeriod('monthly')">
+              🗓️ Bu Ay (Aylık Rapor)
+            </button>
+            <button class="category-tab" id="report-period-btn-custom" onclick="app.switchReportPeriod('custom')">
+              📆 Özel Tarih Aralığı
+            </button>
+          </div>
+
+          <div id="report-custom-date-box" style="display: none; align-items: center; gap: 6px;">
+            <input type="date" id="report-start-date" class="form-input"
+              style="padding: 4px 8px; font-size: 0.85rem;" />
+            <span>-</span>
+            <input type="date" id="report-end-date" class="form-input" style="padding: 4px 8px; font-size: 0.85rem;" />
+            <button class="btn-primary" style="padding: 4px 10px; font-size: 0.85rem;"
+              onclick="app.applyCustomReportDates()">Filtrele</button>
+          </div>
+        </div>
+
+        <div id="stats-summary-cards"
+          style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
+          <!-- Dynamically rendered KPI cards -->
+        </div>
+
+        <div
+          style="display: flex; gap: 8px; border-bottom: 2px solid var(--light-border); padding-bottom: 8px; margin-bottom: 12px;">
+          <button class="category-tab active" id="report-subtab-btn-products"
+            onclick="app.switchReportSubtab('products')">
+            📦 En Çok Satan Ürünler
+          </button>
+          <button class="category-tab" id="report-subtab-btn-sources" onclick="app.switchReportSubtab('sources')">
+            🛵 Sipariş Kaynakları
+          </button>
+          <button class="category-tab" id="report-subtab-btn-discounts" onclick="app.switchReportSubtab('discounts')">
+            🎁 İndirim & İkram Detayı
+          </button>
+          <button class="category-tab" id="report-subtab-btn-orders" onclick="app.switchReportSubtab('orders')">
+            📋 Adisyon Geçmişi
+          </button>
+        </div>
+
+        <div id="report-subtab-products">
+          <div style="max-height: 300px; overflow-y: auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Sıra</th>
+                  <th>Ürün Adı</th>
+                  <th>Kategori</th>
+                  <th style="text-align: center;">Satış Adedi</th>
+                  <th style="text-align: right;">Toplam Ciro</th>
+                </tr>
+              </thead>
+              <tbody id="report-top-products-tbody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="report-subtab-sources" style="display: none;">
+          <div id="report-sources-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <div id="report-subtab-discounts" style="display: none;">
+          <div id="report-discounts-container" style="max-height: 280px; overflow-y: auto;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <div id="report-subtab-orders" style="display: none;">
+          <div style="max-height: 300px; overflow-y: auto;" id="recent-orders-list">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Product & Price & Options Management Modal -->
+  <div class="modal-overlay" id="modal-admin-products">
+    <div class="modal-card" style="max-width: 860px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          ⚙️ Ürün, Fiyat & Opsiyon Yönetimi
+        </div>
+        <button class="btn-close-modal" onclick="app.closeModal('modal-admin-products')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div
+          style="display: flex; gap: 10px; margin-bottom: 14px; border-bottom: 2px solid var(--light-border); padding-bottom: 8px;">
+          <button class="category-tab active" id="admin-tab-btn-products" onclick="app.switchAdminTab('products')">
+            📦 Ürün & Fiyat Listesi
+          </button>
+          <button class="category-tab" id="admin-tab-btn-options" onclick="app.switchAdminTab('options')">
+            🥬 Garnitür & Sos Kuralları
+          </button>
+        </div>
+
+        <div id="admin-tab-products">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <button class="btn-primary" onclick="app.openNewProductModal()">
+              ➕ Yeni Ürün Ekle
+            </button>
+            <button class="btn-secondary" style="color: #D32F2F;" onclick="app.resetMenuToDefault()">
+              🔄 Menüyü Orijinal Fiyatlara Sıfırla
+            </button>
+          </div>
+
+          <p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">
+            💡 <strong>Hızlı Fiyat Değiştirme:</strong> Tablodaki fiyat alanına yeni tutarı yazıp kutunun dışına
+            tıklayın.
+          </p>
+
+          <div style="max-height: 380px; overflow-y: auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Ürün Adı</th>
+                  <th>Kategori</th>
+                  <th>Açıklama</th>
+                  <th style="width: 120px;">Fiyat (₺)</th>
+                  <th>Durum</th>
+                  <th style="text-align: center; width: 140px;">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody id="admin-products-tbody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="admin-tab-options" style="display: none;">
+          <div id="admin-options-management-container">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Product Modal -->
+  <div class="modal-overlay" id="modal-edit-product">
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <div class="modal-title" id="edit-product-modal-title">
+          ✏️ Ürün Düzenle
+        </div>
+        <button class="btn-close-modal" onclick="app.closeModal('modal-edit-product')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-p-id" />
+        <div class="form-group">
+          <label class="form-label">Kategori</label>
+          <select id="edit-p-category" class="form-input"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ürün Adı</label>
+          <input type="text" id="edit-p-name" class="form-input" placeholder="Örn: MEGA DÜRÜM" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fiyat (₺)</label>
+          <input type="number" step="0.5" id="edit-p-price" class="form-input" placeholder="190.0" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">İçerik / Açıklama</label>
+          <input type="text" id="edit-p-desc" class="form-input" placeholder="Örn: 150 gr çiğ köfte, lavaş, yeşillik" />
+        </div>
+        <div class="form-group" style="display: flex; gap: 10px;">
+          <div style="flex: 1;">
+            <label class="form-label">Birim</label>
+            <input type="text" id="edit-p-unit" class="form-input" value="Adet" />
+          </div>
+          <div style="flex: 1;">
+            <label class="form-label">Simge (Emoji)</label>
+            <input type="text" id="edit-p-icon" class="form-input" value="🌯" />
+          </div>
+        </div>
+        <div class="form-group" style="display: flex; gap: 20px; margin-top: 10px;">
+          <label
+            style="display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9rem; cursor: pointer;">
+            <input type="checkbox" id="edit-p-has-options" checked /> Opsiyonlu (Acı/Yeşillik)
+          </label>
+          <label
+            style="display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9rem; cursor: pointer;">
+            <input type="checkbox" id="edit-p-is-active" checked /> Aktif (Satışta)
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="app.closeModal('modal-edit-product')">İptal</button>
+        <button class="btn-primary" onclick="app.saveProductForm()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Options Customization Modal -->
+  <div class="modal-overlay" id="modal-options">
+    <div class="modal-card" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title" id="opt-modal-product-name">
+          🌶️ Çiğköfte Opsiyonları
+        </div>
+        <button class="btn-close-modal" onclick="app.closeModal('modal-options')">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <div id="options-dynamic-groups-container">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <div class="option-group-title" style="margin-top: 14px;">📝 Sipariş / Ürün Notu</div>
+        <input type="text" id="opt-custom-note" class="form-input"
+          placeholder="Örn: Yeşillik ayrı pakette olsun, nar ekşisi bol olsun..." />
+
+      </div>
+
+      <div class="modal-footer"
+        style="display: flex; justify-content: space-between; align-items: center; background: #F8FAFC;">
+        <div style="font-size: 0.9rem; font-weight: 700; color: var(--light-text);">
+          Ürün: <span id="opt-base-price-disp">₺0.00</span>
+          <span id="opt-extra-fee-disp" style="color: var(--primary-red); margin-left: 4px;">(+₺0.00 Ekstra)</span>
+          <div style="font-size: 1.15rem; font-weight: 900; color: var(--primary-red);" id="opt-total-calc-disp">TOPLAM:
+            ₺0.00</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-secondary" onclick="app.closeModal('modal-options')">İptal</button>
+          <button class="btn-primary" onclick="app.confirmAddWithOptions()">Sepete Ekle</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- External Orders Entegration Test Modal -->
+  <div class="modal-overlay" id="modal-external-order">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          🛵 Getir / Trendyol / Migros Sipariş Simülatörü
+        </div>
+        <button class="btn-close-modal" onclick="app.closeModal('modal-external-order')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: #555; margin-bottom: 12px;">
+          Geleceğe yönelik entegrasyon altyapısını test etmek için <code>POST /api/external/orders</code> endpoint'ine
+          otomatik sipariş simüle edin:
+        </p>
+        <div class="form-group">
+          <label class="form-label">Sipariş Kaynağı (Platform)</label>
+          <select id="ext-source" class="form-input">
+            <option value="TRENDYOL">Trendyol Yemek</option>
+            <option value="GETIR">Getir Yemek</option>
+            <option value="MIGROS">Migros Yemek</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Müşteri Adı</label>
+          <input type="text" id="ext-name" class="form-input" value="Caner Koca" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Müşteri Telefonu</label>
+          <input type="text" id="ext-phone" class="form-input" value="05441112233" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Teslimat Adresi</label>
+          <input type="text" id="ext-address" class="form-input" value="Caferağa Mah. Moda Cad. No: 45 Kadıköy" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Örnek Menü Seçimi</label>
+          <select id="ext-preset" class="form-input">
+            <option value="1">MEGA DÜRÜM + Büyük Ayran (₺240.0)</option>
+            <option value="2">ORTA PAKET + 2x Şalgam (₺520.0)</option>
+            <option value="3">AİLE BOYU PAKET + Litrelik Kola (₺850.0)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="app.closeModal('modal-external-order')">İptal</button>
+        <button class="btn-primary" onclick="app.simulateExternalOrder()">Entegre Siparişi Gönder</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Karekod (QR) Oluşturucu ve Yazdırma Modalı -->
+  <div class="modal-overlay" id="modal-qr-generator">
+    <div class="modal-card" style="max-width: 500px; text-align: center;">
+      <div class="modal-header">
+        <div class="modal-title">
+          📱 Karekod (QR) Menü & Masadan Sipariş
+        </div>
+        <button class="btn-close-modal" onclick="app.closeModal('modal-qr-generator')">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <p style="color: #64748B; font-size: 0.9rem; margin-bottom: 16px;">
+          Aşağıdaki QR kodu basarak masalara veya tezgaha yapıştırabilirsiniz. Müşteriler kameraları ile okutarak kendi
+          siparişlerini verebilir!
+        </p>
+
+        <div
+          style="background: white; padding: 20px; border-radius: 16px; border: 2px dashed #CBD5E1; display: inline-block; margin-bottom: 16px;"
+          id="qr-code-img-container">
+          <!-- QR image rendered dynamically -->
+        </div>
+
+        <div style="font-family: var(--font-mono); font-weight: 700; color: var(--primary-red); font-size: 1.05rem;"
+          id="qr-url-text">
+          http://localhost:8000/qr
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: center; gap: 10px;">
+        <button class="btn-secondary" onclick="app.closeModal('modal-qr-generator')">Kapat</button>
+        <button class="btn-primary" onclick="app.printQRCodeSticker()">🖨️ Karekod Etiketini Yazdır</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bekleyen Karekod Siparişleri Onay Modalı -->
+  <div class="modal-overlay" id="modal-qr-approval">
+    <div class="modal-card" style="max-width: 680px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          📱 Bekleyen Karekod (QR) Müşteri Siparişleri
+        </div>
+        <button class="btn-close-modal" onclick="app.closeModal('modal-qr-approval')">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 16px;">
+        <p style="color: #64748B; font-size: 0.9rem; margin-bottom: 12px;">
+          Müşterilerin kendi telefonlarından gönderdiği siparişler aşağıdadır. İnceleyip <strong>"Onayla & Bastır"</strong> butonuna bastığınızda adisyon 80mm yazıcıdan basılacaktır.
+        </p>
+
+        <div id="qr-pending-orders-container" style="max-height: 420px; overflow-y: auto;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="app.closeModal('modal-qr-approval')">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- ==================== 80mm THERMAL RECEIPT PRINT CONTAINER ==================== -->
+  <div id="receipt-print-area">
+    <!-- Populated dynamically via JS before window.print() -->
+  </div>
+
+  <!-- JavaScript Bundle -->
+  <script src="/static/js/app.js"></script>
+</body>
+
+</html>
