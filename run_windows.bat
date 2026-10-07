@@ -1,11 +1,10 @@
 @echo off
-chcp 65001 > nul
-title "O Ses Cigkofte POS System"
+title "O Ses POS - Windows Kasa Server"
 
 cd /d "%~dp0"
 
 echo ============================================================
-echo 🌯 O Ses Çiğköfte POS - Windows Kasa Başlatıcı
+echo O Ses Cigkofte POS - Windows Kasa Baslatici
 echo ============================================================
 
 IF NOT EXIST "venv" (
@@ -13,13 +12,13 @@ IF NOT EXIST "venv" (
     python -m venv venv
 )
 
-echo Kütüphane bağımlılıkları kontrol ediliyor...
+echo Kutuphane bagimliliklari kontrol ediliyor...
 ".\venv\Scripts\python.exe" -m pip install -r requirements.txt --quiet
 
 echo.
 echo ============================================================
-echo 🚀 POS Sunucusu Başlatılıyor!
-echo 📍 Kasa Ekranı: http://localhost:8000
+echo POS Sunucusu Baslatiliyor!
+echo Kasa Ekrani: http://localhost:8000
 echo ============================================================
 echo.
 

@@ -1,60 +1,64 @@
 # ==============================================================================
-# 🌶️ O Ses Çiğköfte POS & Adisyon Sistemi - Windows Otomatik Sistem Kurucu
+# O Ses Cigkofte POS - Windows Otomatik Sistem Kurucu
 # ==============================================================================
 # Bu script Windows kasa bilgisayarında POS uygulamasının çalışabilmesi için
 # gerekli olan Python, Pip paketleri, Cloudflared tünel yazılımı ve Google Chrome
 # bağımlılıklarını kontrol eder, eksik olanları otomatik indirir ve kurar.
-# Ayrıca elektrik kesintisinden sonra arka planda otomatik başlamasını ayarlar.
 # ==============================================================================
 
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = "Stop"
+
+# Windows Konsol Kod Sayfasını UTF-8 Yapma
+try {
+    [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+} catch {}
 
 function Write-Header {
     Clear-Host
     Write-Host "======================================================================" -ForegroundColor Red
-    Write-Host " 🌯 O SES ÇİĞKÖFTE POS - WINDOWS SİSTEM KONTROL VE KURULUM SİHRİBAZI  " -ForegroundColor Yellow
+    Write-Host "    O SES CIGKOFTE POS - WINDOWS SISTEM KONTROL VE KURULUM SIHIRBAZI   " -ForegroundColor Yellow
     Write-Host "======================================================================" -ForegroundColor Red
     Write-Host ""
 }
 
 function Write-Step ($message) {
-    Write-Host "👉 $message" -ForegroundColor Cyan
+    Write-Host "[*] $message" -ForegroundColor Cyan
 }
 
 function Write-Success ($message) {
-    Write-Host "   ✅ $message" -ForegroundColor Green
+    Write-Host "   [OK] $message" -ForegroundColor Green
 }
 
 function Write-Warn ($message) {
-    Write-Host "   ⚠️ $message" -ForegroundColor Yellow
+    Write-Host "   [!] $message" -ForegroundColor Yellow
 }
 
 function Write-Err ($message) {
-    Write-Host "   ❌ $message" -ForegroundColor Red
+    Write-Host "   [HATA] $message" -ForegroundColor Red
 }
 
 Write-Header
 
-# 1. Proje Kök Dizinini Tespit Etme
+# 1. Proje Kok Dizinini Tespit Etme
 $InstallerDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $ProjectDir = Split-Path -Parent $InstallerDir
 Set-Location $ProjectDir
-Write-Step "Proje Klasörü: $ProjectDir"
+Write-Step "Proje Klasoru: $ProjectDir"
 Write-Host ""
 
-# 2. Yönetici (Administrator) İzni Kontrolü
-Write-Step "1/6: Yönetici (Administrator) İzinleri Kontrol Ediliyor..."
+# 2. Yonetici (Administrator) Izni Kontrolu
+Write-Step "1/6: Yonetici (Administrator) Izinleri Kontrol Ediliyor..."
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Warn "Script yönetici haklarıyla çalıştırılmadı. Otomatik Görev Zamanlayıcı ayarları için yönetici izni gerekebilir."
+    Write-Warn "Script yonetici haklariyla calistirilmadi. Otomatik Gorev Zamanlayici ayari icin yonetici izni gerekebilir."
 } else {
-    Write-Success "Yönetici izinleri aktif."
+    Write-Success "Yonetici izinleri aktif."
 }
 Write-Host ""
 
-# 3. Python 3.9+ Kontrolü ve Otomatik Kurulumu
-Write-Step "2/6: Python 3 İncelemesi Yapılıyor..."
+# 3. Python 3.9+ Kontrolu ve Otomatik Kurulumu
+Write-Step "2/6: Python 3 Incelemesi Yapiliyor..."
 $pythonPath = $null
 
 try {
@@ -79,60 +83,60 @@ if (-not $pythonPath) {
 }
 
 if (-not $pythonPath) {
-    Write-Warn "Python 3 (v3.9 veya üstü) bulunamadı! Otomatik kurulum başlatılıyor..."
+    Write-Warn "Python 3 (v3.9 veya ustü) bulunamadi! Otomatik kurulum baslatiliyor..."
     $pythonInstallerUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
     $tempInstaller = "$env:TEMP\python-3.11.9-amd64.exe"
     
-    Write-Step "Python 3.11 İndiriliyor (python.org)..."
+    Write-Step "Python 3.11 Indiriliyor (python.org)..."
     Invoke-WebRequest -Uri $pythonInstallerUrl -OutFile $tempInstaller -UseBasicParsing
     
     Write-Step "Python Sessizce Kuruluyor (PATH'e ekleniyor)..."
     Start-Process -FilePath $tempInstaller -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1 Include_pip=1" -Wait
     
-    # Path değişkenini güncelleme
+    # Path degiskenini guncelleme
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
     
     Remove-Item $tempInstaller -ErrorAction SilentlyContinue
     $pythonPath = "python"
-    Write-Success "Python 3.11 başarıyla kuruldu ve PATH'e eklendi!"
+    Write-Success "Python 3.11 basariyla kuruldu ve PATH'e eklendi!"
 }
 Write-Host ""
 
-# 4. Python Sanal Ortam (venv) ve Bağımlılıklar (requirements.txt)
-Write-Step "3/6: Python Sanal Ortamı ve Paket Bağımlılıkları Kontrol Ediliyor..."
+# 4. Python Sanal Ortam (venv) ve Bagimliliklar (requirements.txt)
+Write-Step "3/6: Python Sanal Ortami ve Paket Bagimliliklari Kontrol Ediliyor..."
 $VenvDir = Join-Path $ProjectDir "venv"
 $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 
 if (-not (Test-Path $VenvDir)) {
-    Write-Step "Sanal ortam (venv) oluşturuluyor..."
+    Write-Step "Sanal ortam (venv) olusturuluyor..."
     & $pythonPath -m venv "$VenvDir"
-    Write-Success "Sanal ortam başarıyla oluşturuldu."
+    Write-Success "Sanal ortam basariyla olusturuldu."
 } else {
     Write-Success "Sanal ortam (venv) mevcut."
 }
 
-Write-Step "Gerekli kütüphaneler (FastAPI, Uvicorn, Pydantic) kontrol edilip yükleniyor..."
+Write-Step "Gerekli kutuphaneler (FastAPI, Uvicorn, Pydantic) kontrol edilip yukleniyor..."
 & "$VenvPython" -m pip install --upgrade pip --quiet
 & "$VenvPython" -m pip install -r "$ProjectDir\requirements.txt" --quiet
-Write-Success "Tüm Python kütüphaneleri güncel ve hazır!"
+Write-Success "Tum Python kutuphaneleri guncel ve hazir!"
 Write-Host ""
 
-# 5. Cloudflared (Tünel Executable) Kontrolü
+# 5. Cloudflared (Tunel Executable) Kontrolu
 Write-Step "4/6: Cloudflare Tunnel (cloudflared.exe) Kontrol Ediliyor..."
 $CloudflaredExe = Join-Path $ProjectDir "cloudflared.exe"
 
 if (-not (Test-Path $CloudflaredExe)) {
-    Write-Warn "cloudflared.exe bulunamadı! GitHub üzerinden otomatik indiriliyor..."
+    Write-Warn "cloudflared.exe bulunamadi! GitHub uzerinden otomatik indiriliyor..."
     $cfUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
     Invoke-WebRequest -Uri $cfUrl -OutFile $CloudflaredExe -UseBasicParsing
-    Write-Success "cloudflared.exe ana klasöre indirildi ve hazırlandı!"
+    Write-Success "cloudflared.exe ana klasore indirildi ve hazirlandi!"
 } else {
-    Write-Success "cloudflared.exe hazır."
+    Write-Success "cloudflared.exe hazir."
 }
 Write-Host ""
 
-# 6. Google Chrome & Masaüstü Kısayolları
-Write-Step "5/6: Google Chrome ve Masaüstü Kısayolları Hazırlanıyor..."
+# 6. Google Chrome & Masaustu Kisayollari
+Write-Step "5/6: Google Chrome ve Masaustu Kisayollari Hazirlaniyor..."
 $ChromePath1 = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 $ChromePath2 = "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
 $ChromeExe = $null
@@ -143,42 +147,42 @@ elseif (Test-Path $ChromePath2) { $ChromeExe = $ChromePath2 }
 if ($ChromeExe) {
     Write-Success "Google Chrome tespit edildi: $ChromeExe"
 } else {
-    Write-Warn "Google Chrome bulunamadı. Kiosk dokunmatik mod için Chrome yüklenmesi önerilir."
+    Write-Warn "Google Chrome bulunamadi. Kiosk dokunmatik mod icin Chrome yuklenmesi onerilir."
 }
 
-# Masaüstüne Kısayol Oluşturma
+# Masaustune Kisayol Olusturma
 try {
     $WScriptShell = New-Object -ComObject WScript.Shell
     $DesktopPath = [System.Environment]::GetFolderPath("Desktop")
     
-    # 1. POS Başlat Kısayolu
-    $ShortcutPath = Join-Path $DesktopPath "O Ses POS - Kasa Başlat.lnk"
+    # 1. POS Baslat Kisayolu
+    $ShortcutPath = Join-Path $DesktopPath "O Ses POS - Kasa Baslat.lnk"
     $Shortcut = $WScriptShell.CreateShortcut($ShortcutPath)
     $Shortcut.TargetPath = Join-Path $ProjectDir "run_windows.bat"
     $Shortcut.WorkingDirectory = $ProjectDir
-    $Shortcut.Description = "O Ses Çiğköfte POS & Adisyon Sunucusunu Başlatır"
+    $Shortcut.Description = "O Ses Cigkofte POS & Adisyon Sunucusunu Baslatir"
     $Shortcut.Save()
-    Write-Success "Masaüstü Kısayolu Oluşturuldu: 'O Ses POS - Kasa Başlat'"
+    Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Kasa Baslat'"
 
-    # 2. Chrome Kiosk Kısayolu (Chrome Varsa)
+    # 2. Chrome Kiosk Kisayolu (Chrome Varsa)
     if ($ChromeExe) {
-        $KioskShortcutPath = Join-Path $DesktopPath "O Ses POS - Kiosk Ekranı.lnk"
+        $KioskShortcutPath = Join-Path $DesktopPath "O Ses POS - Kiosk Ekrani.lnk"
         $KioskShortcut = $WScriptShell.CreateShortcut($KioskShortcutPath)
         $KioskShortcut.TargetPath = $ChromeExe
         $KioskShortcut.Arguments = "--kiosk http://localhost:8000 --kiosk-printing"
-        $KioskShortcut.Description = "POS Ekranını Dokunmatik Tam Ekran Modunda Açarak Fişleri Otomatik Basar"
+        $KioskShortcut.Description = "POS Ekranini Dokunmatik Tam Ekran Modunda Acarak Fisleri Otomatik Basar"
         $KioskShortcut.Save()
-        Write-Success "Masaüstü Kısayolu Oluşturuldu: 'O Ses POS - Kiosk Ekranı'"
+        Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Kiosk Ekrani'"
     }
 } catch {
-    Write-Warn "Masaüstü kısayolları oluşturulurken küçük bir uyarı alındı, ancak kurulum tamamlandı."
+    Write-Warn "Masaustu kisayollari olusturulurken kucuk bir uyari alindi, ancak kurulum tamamlandi."
 }
 Write-Host ""
 
-# 7. Otomatik Arka Plan & Elektrik Kesintisi Otomatik Başlatma Yapılandırması
-Write-Step "6/6: Windows Açılışında Otomatik Arka Plan Servis Ayarları Yapılandırılıyor..."
+# 7. Otomatik Arka Plan & Elektrik Kesintisi Otomatik Baslatma Yapilandirmasi
+Write-Step "6/6: Windows Acilisinda Otomatik Arka Plan Servis Ayarlari Yapilandiriliyor..."
 
-# Arka planda gizli çalıştırıcı VBScript oluşturma
+# Arka planda gizli calistirici VBScript olusturma
 $VbsScriptPath = Join-Path $ProjectDir "run_background_windows.vbs"
 $VbsContent = @"
 Set WshShell = CreateObject("WScript.Shell")
@@ -187,9 +191,9 @@ WshShell.Run chr(34) & "$ProjectDir\run_tunnel_windows.bat" & chr(34), 0
 Set WshShell = Nothing
 "@
 [System.IO.File]::WriteAllText($VbsScriptPath, $VbsContent)
-Write-Success "Gizli arka plan çalıştırıcı oluşturuldu (run_background_windows.vbs)."
+Write-Success "Gizli arka plan calistirici olusturuldu (run_background_windows.vbs)."
 
-# Startup (Başlangıç) Klasörüne Kısayol Ekleme
+# Startup (Baslangic) Klasorune Kisayol Ekleme
 try {
     $StartupFolder = [System.Environment]::GetFolderPath("Startup")
     $StartupShortcutPath = Join-Path $StartupFolder "OsesPOS_AutoStart.lnk"
@@ -197,40 +201,40 @@ try {
     $StartupShortcut.TargetPath = "wscript.exe"
     $StartupShortcut.Arguments = "`"$VbsScriptPath`""
     $StartupShortcut.WorkingDirectory = $ProjectDir
-    $StartupShortcut.Description = "O Ses POS Sunucusu ve Tüneli Otomatik Başlatıcı"
+    $StartupShortcut.Description = "O Ses POS Sunucusu ve Tuneli Otomatik Baslatici"
     $StartupShortcut.Save()
-    Write-Success "Windows Başlangıç Klasörüne (Startup) eklendi: Elektrik geldiğinde PC açılınca otomatik başlayacak!"
+    Write-Success "Windows Baslangic Klasorune (Startup) eklendi: Elektrik geldiginde PC acilinca otomatik baslayacak!"
 } catch {
-    Write-Warn "Başlangıç klasörüne kısayol eklenirken bir hata oluştu."
+    Write-Warn "Baslangic klasorune kisayol eklenirken bir hata olustu."
 }
 
-# Windows Görev Zamanlayıcısı (Task Scheduler) Kaydı
+# Windows Gorev Zamanlayicisi (Task Scheduler) Kaydi
 if ($isAdmin) {
     try {
         $TaskName = "OsesPOS_AutoServer"
         schtasks /Delete /TN $TaskName /F 2>$null
         $schCmd = "schtasks /Create /TN `"$TaskName`" /TR `"wscript.exe `\`"$VbsScriptPath`\`"`" /SC ONLOGON /RL HIGHEST /F"
         Invoke-Expression $schCmd | Out-Null
-        Write-Success "Windows Görev Zamanlayıcısı'na ($TaskName) eklendi!"
+        Write-Success "Windows Gorev Zamanlayicisina ($TaskName) eklendi!"
     } catch {
-        Write-Warn "Görev zamanlayıcısı kaydı oluşturulamadı."
+        Write-Warn "Gorev zamanlayicisi kaydi olusturulamadi."
     }
 }
 
 Write-Host ""
 Write-Host "======================================================================" -ForegroundColor Green
-Write-Host " 🎉 TEBRİKLER! O SES POS SİSTEMİ VE OTOMATİK BAŞLATMA AYARLANDI! " -ForegroundColor Yellow
+Write-Host "   TEBRIKLER! O SES POS SISTEMI VE OTOMATIK BASLATMA AYARLANDI!       " -ForegroundColor Yellow
 Write-Host "======================================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "⚡ ELEKTRİK KESİNTİSİ & AÇILIŞ UYARISI:" -ForegroundColor Cyan
-Write-Host "   - Elektrik gelip bilgisayar açıldığında POS Sunucusu ve QR Tüneli" -ForegroundColor White
-Write-Host "     arka planda HİÇBİR PENCERE AÇILMADAN otomatik olarak çalışacaktır." -ForegroundColor White
-Write-Host "   - Bilgisayarın elektrik geldiğinde kendi kendine açılması için" -ForegroundColor White
-Write-Host "     BIOS menüsünden 'AC Power Recovery -> Power On' seçeneğini açmanız yeterlidir." -ForegroundColor Yellow
+Write-Host "[+] ELEKTRIK KESINTISI & ACILIS UYARISI:" -ForegroundColor Cyan
+Write-Host "   - Elektrik gelip bilgisayar acildiginda POS Sunucusu ve QR Tuneli" -ForegroundColor White
+Write-Host "     arka planda HICBIR PENCERE ACILMADAN otomatik olarak calisacaktir." -ForegroundColor White
+Write-Host "   - Bilgisayarin elektrik geldiginde kendi kendine acilmasi icin" -ForegroundColor White
+Write-Host "     BIOS menusunden 'AC Power Recovery -> Power On' secenegini acmaniz yeterlidir." -ForegroundColor Yellow
 Write-Host ""
 
-$response = Read-Host "Şimdi POS uygulamasını başlatmak ister misiniz? (E/H)"
+$response = Read-Host "Simdi POS uygulamasini baslatmak ister misiniz? (E/H)"
 if ($response -eq 'E' -or $response -eq 'e') {
-    Write-Host "🚀 POS Sunucusu ve Tünel Arka Planda Başlatılıyor..." -ForegroundColor Green
+    Write-Host "[+] POS Sunucusu ve Tunel Arka Planda Baslatiliyor..." -ForegroundColor Green
     Start-Process -FilePath "wscript.exe" -ArgumentList "`"$VbsScriptPath`"" -WorkingDirectory $ProjectDir
 }

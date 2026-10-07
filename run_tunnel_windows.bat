@@ -1,22 +1,21 @@
 @echo off
-chcp 65001 > nul
 title "Cloudflare Tunnel - O Ses Cigkofte QR Menu"
 
 cd /d "%~dp0"
 
 echo ============================================================
-echo 🌩️ Cloudflare Tunnel Otomatik Başlatıcı
+echo Cloudflare Tunnel Otomatik Baslatici
 echo ============================================================
 
 IF NOT EXIST "cloudflared.exe" (
-    echo 'cloudflared.exe' bulunamadı, indiriliyor...
+    echo 'cloudflared.exe' bulunamadi, indiriliyor...
     powershell -Command "Invoke-WebRequest -Uri 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile 'cloudflared.exe'"
-    echo Cloudflare sürücüsü indirildi!
+    echo Cloudflare surucusu indirildi!
 )
 
 echo.
-echo 🚀 Cloudflare HTTPS Tüneli Açılıyor...
-echo 📱 Masadan QR Sipariş Sistemi Aktif!
+echo Cloudflare HTTPS Tuneli Aciliyor...
+echo Masadan QR Siparis Sistemi Aktif!
 echo ============================================================
 echo.
 
