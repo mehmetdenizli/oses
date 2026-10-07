@@ -7,13 +7,13 @@ echo ============================================================
 echo O Ses Cigkofte POS - Windows Kasa Baslatici
 echo ============================================================
 
-IF NOT EXIST "venv" (
+IF NOT EXIST "%~dp0venv" (
     echo Sanal ortam venv bulunamadi, olusturuluyor...
-    python -m venv venv
+    python -m venv "%~dp0venv"
 )
 
 echo Kutuphane bagimliliklari kontrol ediliyor...
-".\venv\Scripts\python.exe" -m pip install -r requirements.txt --quiet
+"%~dp0venv\Scripts\python.exe" -m pip install -r "%~dp0requirements.txt" --quiet
 
 echo.
 echo ============================================================
@@ -22,6 +22,6 @@ echo Kasa Ekrani: http://localhost:8000
 echo ============================================================
 echo.
 
-".\venv\Scripts\python.exe" main.py
+"%~dp0venv\Scripts\python.exe" "%~dp0main.py"
 
 pause

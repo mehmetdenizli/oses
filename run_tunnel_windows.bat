@@ -7,9 +7,9 @@ echo ============================================================
 echo Cloudflare Tunnel Otomatik Baslatici
 echo ============================================================
 
-IF NOT EXIST "cloudflared.exe" (
+IF NOT EXIST "%~dp0cloudflared.exe" (
     echo 'cloudflared.exe' bulunamadi, indiriliyor...
-    powershell -Command "Invoke-WebRequest -Uri 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile 'cloudflared.exe'"
+    powershell -Command "Invoke-WebRequest -Uri 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile '%~dp0cloudflared.exe'"
     echo Cloudflare surucusu indirildi!
 )
 
@@ -19,6 +19,6 @@ echo Masadan QR Siparis Sistemi Aktif!
 echo ============================================================
 echo.
 
-cloudflared.exe tunnel --url http://localhost:8000
+"%~dp0cloudflared.exe" tunnel --url http://localhost:8000
 
 pause
