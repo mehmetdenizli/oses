@@ -1,32 +1,28 @@
 @echo off
 chcp 65001 > nul
-title O Ses Çiğköfte POS & Adisyon Sistemi
-
-echo ============================================================
-echo 🌶️  O Ses Çiğköfte POS - Windows Kasa Tek Tıkla Başlatıcı
-echo ============================================================
+title "O Ses Cigkofte POS System"
 
 cd /d "%~dp0"
 
+echo ============================================================
+echo 🌯 O Ses Çiğköfte POS - Windows Kasa Başlatıcı
+echo ============================================================
+
 IF NOT EXIST "venv" (
-    echo 📦 Sanal ortam (venv) oluşturuluyor...
+    echo Sanal ortam venv bulunamadi, olusturuluyor...
     python -m venv venv
 )
 
-echo ⚙️ Sanal ortam aktif ediliyor...
-call venv\Scripts\activate.bat
-
-echo 📥 Bağımlılıklar yükleniyor...
-pip install -r requirements.txt
+echo Kütüphane bağımlılıkları kontrol ediliyor...
+".\venv\Scripts\python.exe" -m pip install -r requirements.txt --quiet
 
 echo.
 echo ============================================================
-echo 🚀 POS Sunucusu Yerel Ağda Çalıştırılıyor!
+echo 🚀 POS Sunucusu Başlatılıyor!
 echo 📍 Kasa Ekranı: http://localhost:8000
-echo 📱 Personel Telefonları: http://<Kasa_IP>:8000
 echo ============================================================
 echo.
 
-python main.py
+".\venv\Scripts\python.exe" main.py
 
 pause
