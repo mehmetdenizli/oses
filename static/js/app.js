@@ -1325,50 +1325,6 @@ class POSApp {
       this.showToast('Ürün kaydetme hatası', 'error');
     }
   }
-      alert('Lütfen geçerli bir ürün adı ve fiyat girin!');
-      return;
-    }
-
-    const payload = {
-      category_id: catId,
-      name: name,
-      description: desc,
-      price: price,
-      unit: unit,
-      image_symbol: icon,
-      is_active: isActive,
-      has_options: hasOptions
-    };
-
-    try {
-      let res;
-      if (pId) {
-        res = await fetch(`/api/products/${pId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      } else {
-        res = await fetch('/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      }
-
-      if (!res.ok) throw new Error('Ürün kaydedilemedi');
-
-      this.closeModal('modal-edit-product');
-      this.showToast('Ürün başarıyla kaydedildi! 🌶️', 'success');
-
-      await this.fetchProducts();
-      this.renderProductGrid();
-      await this.renderAdminProductsTable();
-
-    } catch (err) {
-      this.showToast('Ürün kaydetme hatası', 'error');
-    }
-  }
 
   async deleteProduct(productId) {
     if (!confirm('Bu ürünü silmek istediğinizden emin misiniz?')) return;
