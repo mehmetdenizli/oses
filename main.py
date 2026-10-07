@@ -39,6 +39,7 @@ class ProductCreateUpdateSchema(BaseModel):
     name: str
     description: Optional[str] = ""
     price: float = Field(gt=0)
+    price_masa: Optional[float] = None
     unit: Optional[str] = "Adet"
     image_symbol: Optional[str] = "🌶️"
     is_active: Optional[int] = 1
@@ -46,6 +47,7 @@ class ProductCreateUpdateSchema(BaseModel):
 
 class PriceUpdateSchema(BaseModel):
     price: float = Field(gt=0)
+    price_masa: Optional[float] = None
 
 class OptionGroupUpdateSchema(BaseModel):
     name: str
@@ -88,7 +90,8 @@ class OrderCreateSchema(BaseModel):
     customer_phone: Optional[str] = None
     customer_name: Optional[str] = None
     customer_address: Optional[str] = None
-    source: Optional[str] = "KASA"  # 'KASA', 'GETIR', 'TRENDYOL', 'MIGROS'
+    source: Optional[str] = "KASA"  # 'KASA', 'GETIR', 'TRENDYOL', 'MIGROS', 'KAREKOD_MUSTERI'
+    order_type: Optional[str] = "PAKET"  # 'PAKET', 'MASA'
     subtotal: float
     discount_amount: float = 0.0
     discount_type: Optional[str] = "NONE"  # 'NONE', 'TL', 'PERCENT', 'IKRAM'
@@ -165,7 +168,7 @@ def update_price(product_id: int, data: PriceUpdateSchema):
     existing = database.get_product_by_id(product_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
-    return database.update_product_price(product_id, data.price)
+    return database.update_product_price(product_id, data.price, data.price_masa)
 
 @app.delete("/api/products/{product_id}")
 def delete_product(product_id: int):

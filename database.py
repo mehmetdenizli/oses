@@ -50,6 +50,7 @@ def init_db():
         name TEXT NOT NULL,
         description TEXT,
         price REAL NOT NULL,
+        price_masa REAL DEFAULT 0.0,
         unit TEXT DEFAULT 'Adet',
         image_symbol TEXT,
         is_active INTEGER DEFAULT 1,
@@ -57,6 +58,13 @@ def init_db():
         FOREIGN KEY (category_id) REFERENCES categories (id)
     );
     """)
+
+    try:
+        cursor.execute("ALTER TABLE products ADD COLUMN price_masa REAL DEFAULT 0.0")
+    except Exception:
+        pass
+
+    cursor.execute("UPDATE products SET price_masa = price WHERE price_masa IS NULL OR price_masa = 0.0")
 
     # Opsiyon Grupları (Garnitür ücretsiz limiti ve aşım ücreti kuralı)
     cursor.execute("""
@@ -84,7 +92,7 @@ def init_db():
     );
     """)
 
-    # Siparişler (source: 'KASA', 'GETIR', 'TRENDYOL', 'MIGROS')
+    # Siparişler (source: 'KASA', 'GETIR', 'TRENDYOL', 'MIGROS', order_type: 'PAKET', 'MASA')
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS orders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,6 +101,7 @@ def init_db():
         customer_name TEXT,
         customer_address TEXT,
         source TEXT DEFAULT 'KASA',
+        order_type TEXT DEFAULT 'PAKET',
         subtotal REAL NOT NULL,
         discount_amount REAL DEFAULT 0.0,
         discount_type TEXT DEFAULT 'NONE',
@@ -109,6 +118,11 @@ def init_db():
 
     try:
         cursor.execute("ALTER TABLE orders ADD COLUMN is_printed INTEGER DEFAULT 0")
+    except Exception:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE orders ADD COLUMN order_type TEXT DEFAULT 'PAKET'")
     except Exception:
         pass
 
@@ -179,55 +193,55 @@ def reset_products_to_menu(conn):
     cat_map = {row["name"]: row["id"] for row in cursor.fetchall()}
 
     products_data = [
-        # Dürümler & Paketler
-        (cat_map["Dürümler & Paketler"], "DÜRÜM", "100 gr çiğ köfte, lavaş, yeşillik", 140.0, "Adet", "🌯", 1, 1),
-        (cat_map["Dürümler & Paketler"], "ULTRA DÜRÜM", "120 gr çiğ köfte, lavaş, yeşillik", 150.0, "Adet", "🌯", 1, 1),
-        (cat_map["Dürümler & Paketler"], "MEGA DÜRÜM", "150 gr çiğ köfte, lavaş, yeşillik", 190.0, "Adet", "🌯", 1, 1),
-        (cat_map["Dürümler & Paketler"], "DUBLE DÜRÜM", "180 gr çiğ köfte, lavaş, yeşillik", 230.0, "Adet", "🌯", 1, 1),
-        (cat_map["Dürümler & Paketler"], "ÇİĞ DİLİM", "100 gr çiğ köfte, lavaş, yeşillik", 160.0, "Adet", "🫓", 1, 1),
-        (cat_map["Dürümler & Paketler"], "DORİTOSLU ÇİĞ DİLİM", "100 gr çiğ köfte, Doritos, lavaş, yeşillik", 180.0, "Adet", "🌮", 1, 1),
-        (cat_map["Dürümler & Paketler"], "KÜÇÜK PAKET", "300 gr çiğ köfte, 2 adet lavaş, yeşillik, 1 acı sos, 1 çiğköfte sos", 270.0, "Paket", "🥗", 1, 1),
-        (cat_map["Dürümler & Paketler"], "ORTA PAKET", "500 gr çiğ köfte, 4 adet lavaş, yeşillik, 2 acı sos, 2 çiğköfte sos", 440.0, "Paket", "🥗", 1, 1),
-        (cat_map["Dürümler & Paketler"], "AVANTAJ PAKET", "600 gr çiğ köfte, 4 adet lavaş, yeşillik, 1 acı sos, 1 çiğköfte sos", 500.0, "Paket", "🍱", 1, 1),
-        (cat_map["Dürümler & Paketler"], "BÜYÜK PAKET", "750 gr çiğ köfte, 6 adet lavaş, yeşillik, 3 acı sos, 3 çiğköfte sos", 600.0, "Paket", "🍱", 1, 1),
-        (cat_map["Dürümler & Paketler"], "AİLE BOYU PAKET", "1 kg çiğ köfte, 8 adet lavaş, yeşillik, 3 acı sos, 3 çiğköfte sos", 750.0, "Paket", "👑", 1, 1),
+        # Dürümler & Paketler (Paket Fiyatı, Masa Fiyatı)
+        (cat_map["Dürümler & Paketler"], "DÜRÜM", "100 gr çiğ köfte, lavaş, yeşillik", 140.0, 150.0, "Adet", "🌯", 1, 1),
+        (cat_map["Dürümler & Paketler"], "ULTRA DÜRÜM", "120 gr çiğ köfte, lavaş, yeşillik", 150.0, 160.0, "Adet", "🌯", 1, 1),
+        (cat_map["Dürümler & Paketler"], "MEGA DÜRÜM", "150 gr çiğ köfte, lavaş, yeşillik", 190.0, 200.0, "Adet", "🌯", 1, 1),
+        (cat_map["Dürümler & Paketler"], "DUBLE DÜRÜM", "180 gr çiğ köfte, lavaş, yeşillik", 230.0, 250.0, "Adet", "🌯", 1, 1),
+        (cat_map["Dürümler & Paketler"], "ÇİĞ DİLİM", "100 gr çiğ köfte, lavaş, yeşillik", 160.0, 170.0, "Adet", "🫓", 1, 1),
+        (cat_map["Dürümler & Paketler"], "DORİTOSLU ÇİĞ DİLİM", "100 gr çiğ köfte, Doritos, lavaş, yeşillik", 180.0, 190.0, "Adet", "🌮", 1, 1),
+        (cat_map["Dürümler & Paketler"], "KÜÇÜK PAKET", "300 gr çiğ köfte, 2 adet lavaş, yeşillik, 1 acı sos, 1 çiğköfte sos", 270.0, 290.0, "Paket", "🥗", 1, 1),
+        (cat_map["Dürümler & Paketler"], "ORTA PAKET", "500 gr çiğ köfte, 4 adet lavaş, yeşillik, 2 acı sos, 2 çiğköfte sos", 440.0, 470.0, "Paket", "🥗", 1, 1),
+        (cat_map["Dürümler & Paketler"], "AVANTAJ PAKET", "600 gr çiğ köfte, 4 adet lavaş, yeşillik, 1 acı sos, 1 çiğköfte sos", 500.0, 530.0, "Paket", "🍱", 1, 1),
+        (cat_map["Dürümler & Paketler"], "BÜYÜK PAKET", "750 gr çiğ köfte, 6 adet lavaş, yeşillik, 3 acı sos, 3 çiğköfte sos", 600.0, 640.0, "Paket", "🍱", 1, 1),
+        (cat_map["Dürümler & Paketler"], "AİLE BOYU PAKET", "1 kg çiğ köfte, 8 adet lavaş, yeşillik, 3 acı sos, 3 çiğköfte sos", 750.0, 800.0, "Paket", "👑", 1, 1),
 
         # İçecekler
-        (cat_map["İçecekler"], "Su", "Doğal kaynak suyu 0.5L", 20.0, "Şişe", "💧", 1, 0),
-        (cat_map["İçecekler"], "Küçük Ayran", "Küçük boy taze ayran", 40.0, "Adet", "🥛", 1, 0),
-        (cat_map["İçecekler"], "Büyük Ayran", "Büyük boy taze ayran", 50.0, "Adet", "🥛", 1, 0),
-        (cat_map["İçecekler"], "Acılı Ayran", "Özel baharatlı acılı ayran", 60.0, "Adet", "🥛", 1, 0),
-        (cat_map["İçecekler"], "Naneli Ayran", "Taze naneli ferahlatıcı ayran", 60.0, "Adet", "🥛", 1, 0),
-        (cat_map["İçecekler"], "Ekşi Ayran", "Geleneksel ekşi yayık ayranı", 60.0, "Adet", "🥛", 1, 0),
-        (cat_map["İçecekler"], "Kola", "Soğuk kutu kola 330ml", 80.0, "Kutu", "🥤", 1, 0),
-        (cat_map["İçecekler"], "Ice Tea", "Soğuk çay 330ml", 80.0, "Kutu", "🍹", 1, 0),
-        (cat_map["İçecekler"], "Fanta", "Portakallı gazlı içecek 330ml", 80.0, "Kutu", "🍊", 1, 0),
-        (cat_map["İçecekler"], "Şalgam", "Adana usulü şalgam suyu", 40.0, "Şişe", "🍷", 1, 0),
-        (cat_map["İçecekler"], "Maden Suyu", "Sade maden suyu (Soda)", 40.0, "Şişe", "🍾", 1, 0),
-        (cat_map["İçecekler"], "Turşu Suyu", "Geleneksel lezzetli turşu suyu", 40.0, "Bardak", "🥒", 1, 0),
-        (cat_map["İçecekler"], "Litrelik Ayran", "1 Litre aile boyu ayran", 100.0, "Şişe", "🥛", 1, 0),
-        (cat_map["İçecekler"], "Litrelik Kola", "1 Litre soğuk kola", 100.0, "Şişe", "🥤", 1, 0),
+        (cat_map["İçecekler"], "Su", "Doğal kaynak suyu 0.5L", 20.0, 20.0, "Şişe", "💧", 1, 0),
+        (cat_map["İçecekler"], "Küçük Ayran", "Küçük boy taze ayran", 40.0, 45.0, "Adet", "🥛", 1, 0),
+        (cat_map["İçecekler"], "Büyük Ayran", "Büyük boy taze ayran", 50.0, 55.0, "Adet", "🥛", 1, 0),
+        (cat_map["İçecekler"], "Acılı Ayran", "Özel baharatlı acılı ayran", 60.0, 65.0, "Adet", "🥛", 1, 0),
+        (cat_map["İçecekler"], "Naneli Ayran", "Taze naneli ferahlatıcı ayran", 60.0, 65.0, "Adet", "🥛", 1, 0),
+        (cat_map["İçecekler"], "Ekşi Ayran", "Geleneksel ekşi yayık ayranı", 60.0, 65.0, "Adet", "🥛", 1, 0),
+        (cat_map["İçecekler"], "Kola", "Soğuk kutu kola 330ml", 80.0, 85.0, "Kutu", "🥤", 1, 0),
+        (cat_map["İçecekler"], "Ice Tea", "Soğuk çay 330ml", 80.0, 85.0, "Kutu", "🍹", 1, 0),
+        (cat_map["İçecekler"], "Fanta", "Portakallı gazlı içecek 330ml", 80.0, 85.0, "Kutu", "🍊", 1, 0),
+        (cat_map["İçecekler"], "Şalgam", "Adana usulü şalgam suyu", 40.0, 45.0, "Şişe", "🍷", 1, 0),
+        (cat_map["İçecekler"], "Maden Suyu", "Sade maden suyu (Soda)", 40.0, 45.0, "Şişe", "🍾", 1, 0),
+        (cat_map["İçecekler"], "Turşu Suyu", "Geleneksel lezzetli turşu suyu", 40.0, 45.0, "Bardak", "🥒", 1, 0),
+        (cat_map["İçecekler"], "Litrelik Ayran", "1 Litre aile boyu ayran", 100.0, 110.0, "Şişe", "🥛", 1, 0),
+        (cat_map["İçecekler"], "Litrelik Kola", "1 Litre soğuk kola", 100.0, 110.0, "Şişe", "🥤", 1, 0),
 
         # Tatlılar
-        (cat_map["Tatlılar"], "Kazandibi", "Geleneksel sütlü kazandibi tatlısı", 70.0, "Porsiyon", "🍮", 1, 0),
-        (cat_map["Tatlılar"], "Sütlaç", "Fırınlanmış lezzetli ev sütlacı", 70.0, "Porsiyon", "🍨", 1, 0),
-        (cat_map["Tatlılar"], "Profiterol", "Çikolata soslu taze profiterol", 70.0, "Porsiyon", "🧁", 1, 0),
-        (cat_map["Tatlılar"], "Supangle", "Yoğun çikolatalı nefis supangle", 70.0, "Porsiyon", "🍰", 1, 0),
-        (cat_map["Tatlılar"], "Şam Tatlısı", "Antep fıstıklı şerbetli Şam tatlısı", 70.0, "Dilim", "🥧", 1, 0),
+        (cat_map["Tatlılar"], "Kazandibi", "Geleneksel sütlü kazandibi tatlısı", 70.0, 75.0, "Porsiyon", "🍮", 1, 0),
+        (cat_map["Tatlılar"], "Sütlaç", "Fırınlanmış lezzetli ev sütlacı", 70.0, 75.0, "Porsiyon", "🍨", 1, 0),
+        (cat_map["Tatlılar"], "Profiterol", "Çikolata soslu taze profiterol", 70.0, 75.0, "Porsiyon", "🧁", 1, 0),
+        (cat_map["Tatlılar"], "Supangle", "Yoğun çikolatalı nefis supangle", 70.0, 75.0, "Porsiyon", "🍰", 1, 0),
+        (cat_map["Tatlılar"], "Şam Tatlısı", "Antep fıstıklı şerbetli Şam tatlısı", 70.0, 75.0, "Dilim", "🥧", 1, 0),
 
         # Ekstralar & Soslar
-        (cat_map["Ekstralar & Soslar"], "Doritos Farkı", "Dürüme ek çıtır Doritos ilavesi", 20.0, "Porsiyon", "🧀", 1, 0),
-        (cat_map["Ekstralar & Soslar"], "Ekstra Lavaş", "Taze yumuşak ekstra lavaş ekmeği", 10.0, "Adet", "🫓", 1, 0),
-        (cat_map["Ekstralar & Soslar"], "Acı Sos 1 kg", "O Ses özel acı sos (1 Kg Şişe)", 200.0, "Şişe", "🌶️", 1, 0),
-        (cat_map["Ekstralar & Soslar"], "Çiğköfte Sosu 1 kg", "O Ses özel çiğköfte nar ekşili sosu (1 Kg Şişe)", 200.0, "Şişe", "🍾", 1, 0),
-        (cat_map["Ekstralar & Soslar"], "Burger Sos 750 ml", "Özel gurme burger sosu (750 ml)", 200.0, "Şişe", "🥫", 1, 0)
+        (cat_map["Ekstralar & Soslar"], "Doritos Farkı", "Dürüme ek çıtır Doritos ilavesi", 20.0, 20.0, "Porsiyon", "🧀", 1, 0),
+        (cat_map["Ekstralar & Soslar"], "Ekstra Lavaş", "Taze yumuşak ekstra lavaş ekmeği", 10.0, 10.0, "Adet", "🫓", 1, 0),
+        (cat_map["Ekstralar & Soslar"], "Acı Sos 1 kg", "O Ses özel acı sos (1 Kg Şişe)", 200.0, 200.0, "Şişe", "🌶️", 1, 0),
+        (cat_map["Ekstralar & Soslar"], "Çiğköfte Sosu 1 kg", "O Ses özel çiğköfte nar ekşili sosu (1 Kg Şişe)", 200.0, 200.0, "Şişe", "🍾", 1, 0),
+        (cat_map["Ekstralar & Soslar"], "Burger Sos 750 ml", "Özel gurme burger sosu (750 ml)", 200.0, 200.0, "Şişe", "🥫", 1, 0)
     ]
 
-    for cat_id, name, desc, price, unit, icon, active, has_opt in products_data:
+    for cat_id, name, desc, price, price_m, unit, icon, active, has_opt in products_data:
         cursor.execute("""
-            INSERT INTO products (category_id, name, description, price, unit, image_symbol, is_active, has_options)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (cat_id, name, desc, price, unit, icon, active, has_opt))
+            INSERT INTO products (category_id, name, description, price, price_masa, unit, image_symbol, is_active, has_options)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (cat_id, name, desc, price, price_m, unit, icon, active, has_opt))
 
     conn.commit()
 
@@ -397,14 +411,20 @@ def get_products(category_id=None, include_inactive=False):
 def create_product(p_data: dict):
     conn = get_db_connection()
     cursor = conn.cursor()
+    price = float(p_data.get("price", 0.0))
+    price_masa = float(p_data.get("price_masa")) if p_data.get("price_masa") is not None else price
+    if price_masa == 0.0:
+        price_masa = price
+
     cursor.execute("""
-        INSERT INTO products (category_id, name, description, price, unit, image_symbol, is_active, has_options)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO products (category_id, name, description, price, price_masa, unit, image_symbol, is_active, has_options)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         int(p_data.get("category_id")),
         p_data.get("name"),
         p_data.get("description", ""),
-        float(p_data.get("price", 0.0)),
+        price,
+        price_masa,
         p_data.get("unit", "Adet"),
         p_data.get("image_symbol", "🌶️"),
         int(p_data.get("is_active", 1)),
@@ -418,16 +438,21 @@ def create_product(p_data: dict):
 def update_product(product_id: int, p_data: dict):
     conn = get_db_connection()
     cursor = conn.cursor()
+    price = float(p_data.get("price", 0.0))
+    price_masa = float(p_data.get("price_masa")) if p_data.get("price_masa") is not None else price
+    if price_masa == 0.0:
+        price_masa = price
 
     cursor.execute("""
         UPDATE products
-        SET category_id = ?, name = ?, description = ?, price = ?, unit = ?, image_symbol = ?, is_active = ?, has_options = ?
+        SET category_id = ?, name = ?, description = ?, price = ?, price_masa = ?, unit = ?, image_symbol = ?, is_active = ?, has_options = ?
         WHERE id = ?
     """, (
         int(p_data.get("category_id")),
         p_data.get("name"),
         p_data.get("description", ""),
-        float(p_data.get("price", 0.0)),
+        price,
+        price_masa,
         p_data.get("unit", "Adet"),
         p_data.get("image_symbol", "🌶️"),
         int(p_data.get("is_active", 1)),
@@ -438,10 +463,13 @@ def update_product(product_id: int, p_data: dict):
     conn.close()
     return get_product_by_id(product_id)
 
-def update_product_price(product_id: int, new_price: float):
+def update_product_price(product_id: int, new_price: float, new_price_masa: float = None):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("UPDATE products SET price = ? WHERE id = ?", (float(new_price), product_id))
+    if new_price_masa is not None:
+        cursor.execute("UPDATE products SET price = ?, price_masa = ? WHERE id = ?", (float(new_price), float(new_price_masa), product_id))
+    else:
+        cursor.execute("UPDATE products SET price = ? WHERE id = ?", (float(new_price), product_id))
     conn.commit()
     conn.close()
     return get_product_by_id(product_id)
@@ -556,6 +584,7 @@ def create_order(order_data: dict):
     c_name = order_data.get("customer_name", "")
     c_address = order_data.get("customer_address", "")
     source = order_data.get("source", "KASA")
+    order_type = order_data.get("order_type", "PAKET")
     subtotal = float(order_data.get("subtotal", 0.0))
     discount_amount = float(order_data.get("discount_amount", 0.0))
     discount_type = order_data.get("discount_type", "NONE")
@@ -582,10 +611,10 @@ def create_order(order_data: dict):
 
     cursor.execute("""
         INSERT INTO orders (
-            order_number, customer_phone, customer_name, customer_address, source,
+            order_number, customer_phone, customer_name, customer_address, source, order_type,
             subtotal, discount_amount, discount_type, total_amount, payment_method, note, order_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (order_num, phone, c_name, c_address, source, subtotal, discount_amount, discount_type, total_amount, payment_method, note, order_status))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (order_num, phone, c_name, c_address, source, order_type, subtotal, discount_amount, discount_type, total_amount, payment_method, note, order_status))
 
     order_id = cursor.lastrowid
 

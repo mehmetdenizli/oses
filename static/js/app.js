@@ -8,6 +8,7 @@ class POSApp {
     this.products = [];
     this.optionGroups = [];
     this.activeCategory = 'ALL';
+    this.orderType = 'PAKET'; // 'PAKET' (Gel-Al) or 'MASA' (Salon)
     this.cart = [];
     this.activeCustomer = null;
     this.discount = { type: 'NONE', value: 0 };
@@ -63,6 +64,23 @@ class POSApp {
     }
   }
 
+  // --- Price & Order Mode Helpers ---
+
+  getProductPrice(product) {
+    if (!product) return 0;
+    if (this.orderType === 'MASA') {
+      return (product.price_masa && product.price_masa > 0) ? product.price_masa : product.price;
+    }
+    return product.price;
+  }
+
+  setOrderType(type) {
+    this.orderType = type;
+    this.renderCategoryTabs();
+    this.renderProductGrid();
+    this.showToast(`Sipariş Tarifesi Değişti: ${type === 'MASA' ? '🍽️ MASA (Salon)' : '📦 PAKET (Gel-Al)'}`, 'info');
+  }
+
   // --- Rendering POS Interface ---
 
   renderCategoryTabs() {
@@ -70,8 +88,11 @@ class POSApp {
     if (!container) return;
 
     let html = `
-      <button class="category-tab ${this.activeCategory === 'ALL' ? 'active' : ''}" onclick="app.filterCategory('ALL')">
-        ✨ Tüm Ürünler
+      <button class="category-tab ${this.orderType === 'PAKET' ? 'active' : ''}" style="${this.orderType === 'PAKET' ? 'background: linear-gradient(135deg, #10B981 0%, #059669 100%); color:white; font-weight:800;' : 'background:#E2E8F0; color:#334155; font-weight:700;'}" onclick="app.setOrderType('PAKET')">
+        📦 PAKET (Gel-Al)
+      </button>
+      <button class="category-tab ${this.orderType === 'MASA' ? 'active' : ''}" style="${this.orderType === 'MASA' ? 'background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color:white; font-weight:800;' : 'background:#E2E8F0; color:#334155; font-weight:700;'}" onclick="app.setOrderType('MASA')">
+        🍽️ MASA (Salon)
       </button>
     `;
 
@@ -83,6 +104,12 @@ class POSApp {
         </button>
       `;
     });
+
+    html += `
+      <button class="category-tab ${this.activeCategory === 'ALL' ? 'active' : ''}" onclick="app.filterCategory('ALL')">
+        ✨ Tüm Ürünler
+      </button>
+    `;
 
     container.innerHTML = html;
   }
@@ -109,17 +136,23 @@ class POSApp {
     let html = '';
     filtered.forEach(p => {
       const hasOpts = p.has_options === 1;
+      const currentPrice = this.getProductPrice(p);
+      const modeBadge = this.orderType === 'MASA' 
+        ? `<span class="product-badge-opt" style="background:#DBEAFE; color:#1E40AF;">🍽️ Masa</span>`
+        : `<span class="product-badge-opt" style="background:#D1FAE5; color:#065F46;">📦 Paket</span>`;
+
       html += `
         <div class="product-card" onclick="app.handleProductClick(${p.id})">
           <div class="product-header">
             <div class="product-icon">${p.image_symbol || '🌶️'}</div>
+            ${modeBadge}
             ${hasOpts ? `<span class="product-badge-opt">Opsiyonlu</span>` : ''}
           </div>
           <div class="product-name">${p.name}</div>
           <div class="product-desc">${p.description || ''}</div>
           <div class="product-footer">
             <div>
-              <span class="product-price">₺${p.price.toFixed(2)}</span>
+              <span class="product-price">₺${currentPrice.toFixed(2)}</span>
               <span class="product-unit">/ ${p.unit}</span>
             </div>
             <button class="btn-add-touch">+</button>
@@ -137,11 +170,13 @@ class POSApp {
     const product = this.products.find(p => p.id === productId);
     if (!product) return;
 
+    const currentPrice = this.getProductPrice(product);
+
     if (product.has_options === 1) {
       this.openOptionsModal(product);
     } else {
-      this.addToCart(product, '', product.price);
-      this.showToast(`${product.name} sepete eklendi`, 'success');
+      this.addToCart(product, '', currentPrice);
+      this.showToast(`${product.name} sepete eklendi (₺${currentPrice.toFixed(2)})`, 'success');
     }
   }
 
@@ -235,7 +270,7 @@ class POSApp {
   recalculateModalTotalPrice() {
     if (!this.pendingProduct) return;
 
-    let basePrice = this.pendingProduct.price;
+    let basePrice = this.getProductPrice(this.pendingProduct);
     let extraFeeTotal = 0.0;
 
     this.optionGroups.forEach(group => {
@@ -300,7 +335,7 @@ class POSApp {
   // --- Cart Management ---
 
   addToCart(product, optionsSummary = '', unitPrice = null) {
-    const finalUnitPrice = unitPrice !== null ? unitPrice : product.price;
+    const finalUnitPrice = unitPrice !== null ? unitPrice : this.getProductPrice(product);
 
     const existingIndex = this.cart.findIndex(
       item => item.productId === product.id && item.optionsSummary === optionsSummary && item.unitPrice === finalUnitPrice
@@ -951,6 +986,7 @@ class POSApp {
       let html = '';
       allProducts.forEach(p => {
         const isActive = p.is_active === 1;
+        const priceMasaVal = (p.price_masa && p.price_masa > 0) ? p.price_masa : p.price;
         html += `
           <tr>
             <td><strong>${p.image_symbol || '🌶️'} ${p.name}</strong></td>
@@ -963,9 +999,21 @@ class POSApp {
                   type="number" 
                   step="0.5"
                   class="price-input" 
-                  id="admin-price-${p.id}" 
                   value="${p.price}" 
-                  onchange="app.quickUpdatePrice(${p.id}, this.value)"
+                  onchange="app.quickUpdatePrice(${p.id}, this.value, 'price')"
+                />
+              </div>
+            </td>
+            <td>
+              <div class="price-input-group">
+                <span style="color:#1E40AF;">₺</span>
+                <input 
+                  type="number" 
+                  step="0.5"
+                  class="price-input" 
+                  style="color:#1E40AF; font-weight:700;"
+                  value="${priceMasaVal}" 
+                  onchange="app.quickUpdatePrice(${p.id}, this.value, 'price_masa')"
                 />
               </div>
             </td>
@@ -987,7 +1035,7 @@ class POSApp {
       });
       tbody.innerHTML = html;
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Ürünler yüklenirken hata oluştu.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">Ürünler yüklenirken hata oluştu.</td></tr>`;
     }
   }
 
@@ -1142,18 +1190,26 @@ class POSApp {
     }
   }
 
-  async quickUpdatePrice(productId, newPrice) {
+  async quickUpdatePrice(productId, newPrice, priceType = 'price') {
     const priceVal = parseFloat(newPrice);
     if (isNaN(priceVal) || priceVal <= 0) {
       alert('Görünür bir fiyat girin!');
       return;
     }
 
+    const product = this.products.find(p => p.id === productId);
+    if (!product) return;
+
+    const payload = {
+      price: priceType === 'price' ? priceVal : product.price,
+      price_masa: priceType === 'price_masa' ? priceVal : (product.price_masa || product.price)
+    };
+
     try {
       const res = await fetch(`/api/products/${productId}/price`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ price: priceVal })
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) throw new Error('Fiyat güncellenemedi');
@@ -1171,6 +1227,7 @@ class POSApp {
     document.getElementById('edit-p-id').value = '';
     document.getElementById('edit-p-name').value = '';
     document.getElementById('edit-p-price').value = '';
+    document.getElementById('edit-p-price-masa').value = '';
     document.getElementById('edit-p-desc').value = '';
     document.getElementById('edit-p-unit').value = 'Adet';
     document.getElementById('edit-p-icon').value = '🌯';
@@ -1190,6 +1247,7 @@ class POSApp {
     document.getElementById('edit-p-id').value = product.id;
     document.getElementById('edit-p-name').value = product.name;
     document.getElementById('edit-p-price').value = product.price;
+    document.getElementById('edit-p-price-masa').value = product.price_masa || product.price;
     document.getElementById('edit-p-desc').value = product.description || '';
     document.getElementById('edit-p-unit').value = product.unit || 'Adet';
     document.getElementById('edit-p-icon').value = product.image_symbol || '🌶️';
@@ -1216,6 +1274,7 @@ class POSApp {
     const catId = parseInt(document.getElementById('edit-p-category').value);
     const name = document.getElementById('edit-p-name').value.trim();
     const price = parseFloat(document.getElementById('edit-p-price').value);
+    const priceMasa = parseFloat(document.getElementById('edit-p-price-masa').value) || price;
     const desc = document.getElementById('edit-p-desc').value.trim();
     const unit = document.getElementById('edit-p-unit').value.trim() || 'Adet';
     const icon = document.getElementById('edit-p-icon').value.trim() || '🌶️';
@@ -1223,6 +1282,49 @@ class POSApp {
     const isActive = document.getElementById('edit-p-is-active').checked ? 1 : 0;
 
     if (!name || isNaN(price) || price <= 0) {
+      alert('Lütfen geçerli bir ürün adı ve paket fiyatı girin!');
+      return;
+    }
+
+    const payload = {
+      category_id: catId,
+      name: name,
+      description: desc,
+      price: price,
+      price_masa: priceMasa,
+      unit: unit,
+      image_symbol: icon,
+      is_active: isActive,
+      has_options: hasOptions
+    };
+
+    try {
+      let res;
+      if (pId) {
+        res = await fetch(`/api/products/${pId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        res = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (!res.ok) throw new Error('Ürün kaydedilemedi');
+
+      this.closeModal('modal-edit-product');
+      this.showToast('Ürün başarıyla kaydedildi!', 'success');
+      await this.fetchProducts();
+      this.renderProductGrid();
+      this.renderAdminProductsTable();
+    } catch (err) {
+      this.showToast('Ürün kaydetme hatası', 'error');
+    }
+  }
       alert('Lütfen geçerli bir ürün adı ve fiyat girin!');
       return;
     }
@@ -1323,6 +1425,7 @@ class POSApp {
       customer_name: this.activeCustomer ? this.activeCustomer.name : 'Tezgah / Gel-Al Müşterisi',
       customer_address: this.activeCustomer ? this.activeCustomer.address : '',
       source: 'KASA',
+      order_type: this.orderType,
       subtotal: subtotal,
       discount_amount: discountAmount,
       discount_type: this.discount.type,
@@ -1392,6 +1495,7 @@ class POSApp {
     });
 
     const hasCustomer = order.customer_name && order.customer_name !== 'Tezgah / Gel-Al Müşterisi';
+    const orderTypeLabel = (order.order_type === 'MASA' || order.order_type === 'SALON') ? '🍽️ MASA (Salon)' : '📦 PAKET (Gel-Al)';
 
     printArea.innerHTML = `
       <div class="receipt-header">
@@ -1402,6 +1506,7 @@ class POSApp {
       <div class="receipt-meta">
         <div class="receipt-meta-row"><span>Sipariş No:</span> <strong>${order.order_number}</strong></div>
         <div class="receipt-meta-row"><span>Tarih/Saat:</span> <span>${dateFormatted}</span></div>
+        <div class="receipt-meta-row"><span>Sipariş Türü:</span> <strong>${orderTypeLabel}</strong></div>
         <div class="receipt-meta-row"><span>Kaynak:</span> <strong>${order.source}</strong></div>
       </div>
 

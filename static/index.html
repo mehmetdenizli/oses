@@ -361,7 +361,8 @@
                   <th>Ürün Adı</th>
                   <th>Kategori</th>
                   <th>Açıklama</th>
-                  <th style="width: 120px;">Fiyat (₺)</th>
+                  <th style="width: 110px;">Paket (₺)</th>
+                  <th style="width: 110px;">Masa (₺)</th>
                   <th>Durum</th>
                   <th style="text-align: center; width: 140px;">İşlemler</th>
                 </tr>
@@ -402,9 +403,15 @@
           <label class="form-label">Ürün Adı</label>
           <input type="text" id="edit-p-name" class="form-input" placeholder="Örn: MEGA DÜRÜM" required />
         </div>
-        <div class="form-group">
-          <label class="form-label">Fiyat (₺)</label>
-          <input type="number" step="0.5" id="edit-p-price" class="form-input" placeholder="190.0" required />
+        <div class="form-group" style="display: flex; gap: 10px;">
+          <div style="flex: 1;">
+            <label class="form-label">Paket Fiyatı (₺)</label>
+            <input type="number" step="0.5" id="edit-p-price" class="form-input" placeholder="190.0" required />
+          </div>
+          <div style="flex: 1;">
+            <label class="form-label">Masa Fiyatı (₺)</label>
+            <input type="number" step="0.5" id="edit-p-price-masa" class="form-input" placeholder="200.0" required />
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">İçerik / Açıklama</label>
