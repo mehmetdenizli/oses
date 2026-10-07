@@ -23,7 +23,8 @@ Dokunmatik kasa uyumlu, sıfır harici sunucu maliyetli **POS, Adisyon, Müşter
 
 ## 📚 Dokümantasyon
 
-- 🪟 [Windows Kurulum ve Kullanım Kılavuzu](WINDOWS_KURULUM_VE_KULLANIM.md)
+- 🪟 [Windows Otomatik Kurulum Sihirbazı](windows_installer/README.md)
+- 📖 [Windows Detaylı Kurulum ve Kullanım Kılavuzu](WINDOWS_KURULUM_VE_KULLANIM.md)
 - ⚙️ [Genel Kurulum ve Veritabanı Rehberi](KURULUM_VE_VERITABANI_REHBERI.md)
 - 🌐 [Vercel Redirector Kurulum Rehberi](redirector/README.md)
 - 📝 [Geliştirici Günlüğü (DEVLOG)](DEVLOG.md)
