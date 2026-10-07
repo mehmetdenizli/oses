@@ -11,6 +11,7 @@ Bu dizindeki **`setup_windows.ps1`** PowerShell scripti, **O Ses Çiğköfte POS
 3. **Pip Paket Yüklemesi:** `FastAPI`, `Uvicorn`, `Pydantic` ve gerekli tüm kütüphaneleri `requirements.txt` üzerinden sanal ortama yükler.
 4. **Cloudflare Tüneli (`cloudflared.exe`):** QR masadan sipariş sisteminin internete açılabilmesi için `cloudflared.exe` Windows sürümünü indirir ve proje klasörüne yerleştirir.
 5. **Masaüstü Kısayolları:** Masaüstüne **"O Ses POS - Kasa Başlat"** ve **"O Ses POS - Kiosk Ekranı"** (dokunmatik tam ekran ve otomatik diyalogsuz fiş yazıcı modu) kısayollarını otomatik ekler.
+6. **Arka Planda Otomatik Başlatma (Elektrik Kesintisi Koruması):** `run_background_windows.vbs` scriptini oluşturur ve Windows Başlangıç Klasörüne (`shell:startup`) ile Windows Görev Zamanlayıcısına ekler. Bilgisayar veya elektrik yeniden geldiğinde POS Sunucusu ve Tünel arka planda otomatik başlar!
 
 ---
 

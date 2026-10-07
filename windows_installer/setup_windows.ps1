@@ -4,6 +4,7 @@
 # Bu script Windows kasa bilgisayarında POS uygulamasının çalışabilmesi için
 # gerekli olan Python, Pip paketleri, Cloudflared tünel yazılımı ve Google Chrome
 # bağımlılıklarını kontrol eder, eksik olanları otomatik indirir ve kurar.
+# Ayrıca elektrik kesintisinden sonra arka planda otomatik başlamasını ayarlar.
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -43,17 +44,17 @@ Write-Step "Proje Klasörü: $ProjectDir"
 Write-Host ""
 
 # 2. Yönetici (Administrator) İzni Kontrolü
-Write-Step "1/5: Yönetici (Administrator) İzinleri Kontrol Ediliyor..."
+Write-Step "1/6: Yönetici (Administrator) İzinleri Kontrol Ediliyor..."
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Warn "Script yönetici haklarıyla çalıştırılmadı. Bazı yüklemeler için izin istenebilir."
+    Write-Warn "Script yönetici haklarıyla çalıştırılmadı. Otomatik Görev Zamanlayıcı ayarları için yönetici izni gerekebilir."
 } else {
     Write-Success "Yönetici izinleri aktif."
 }
 Write-Host ""
 
 # 3. Python 3.9+ Kontrolü ve Otomatik Kurulumu
-Write-Step "2/5: Python 3 İncelemesi Yapılıyor..."
+Write-Step "2/6: Python 3 İncelemesi Yapılıyor..."
 $pythonPath = $null
 
 try {
@@ -65,9 +66,7 @@ try {
             Write-Success "Python bulundu: $pyVer"
         }
     }
-} catch {
-    # Python sistemde doğrudan yok
-}
+} catch {}
 
 if (-not $pythonPath) {
     try {
@@ -100,7 +99,7 @@ if (-not $pythonPath) {
 Write-Host ""
 
 # 4. Python Sanal Ortam (venv) ve Bağımlılıklar (requirements.txt)
-Write-Step "3/5: Python Sanal Ortamı ve Paket Bağımlılıkları Kontrol Ediliyor..."
+Write-Step "3/6: Python Sanal Ortamı ve Paket Bağımlılıkları Kontrol Ediliyor..."
 $VenvDir = Join-Path $ProjectDir "venv"
 $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 
@@ -119,7 +118,7 @@ Write-Success "Tüm Python kütüphaneleri güncel ve hazır!"
 Write-Host ""
 
 # 5. Cloudflared (Tünel Executable) Kontrolü
-Write-Step "4/5: Cloudflare Tunnel (cloudflared.exe) Kontrol Ediliyor..."
+Write-Step "4/6: Cloudflare Tunnel (cloudflared.exe) Kontrol Ediliyor..."
 $CloudflaredExe = Join-Path $ProjectDir "cloudflared.exe"
 
 if (-not (Test-Path $CloudflaredExe)) {
@@ -133,7 +132,7 @@ if (-not (Test-Path $CloudflaredExe)) {
 Write-Host ""
 
 # 6. Google Chrome & Masaüstü Kısayolları
-Write-Step "5/5: Google Chrome ve Masaüstü Kısayolları Hazırlanıyor..."
+Write-Step "5/6: Google Chrome ve Masaüstü Kısayolları Hazırlanıyor..."
 $ChromePath1 = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 $ChromePath2 = "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
 $ChromeExe = $null
@@ -174,22 +173,64 @@ try {
 } catch {
     Write-Warn "Masaüstü kısayolları oluşturulurken küçük bir uyarı alındı, ancak kurulum tamamlandı."
 }
+Write-Host ""
+
+# 7. Otomatik Arka Plan & Elektrik Kesintisi Otomatik Başlatma Yapılandırması
+Write-Step "6/6: Windows Açılışında Otomatik Arka Plan Servis Ayarları Yapılandırılıyor..."
+
+# Arka planda gizli çalıştırıcı VBScript oluşturma
+$VbsScriptPath = Join-Path $ProjectDir "run_background_windows.vbs"
+$VbsContent = @"
+Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run chr(34) & "$ProjectDir\run_windows.bat" & chr(34), 0
+WshShell.Run chr(34) & "$ProjectDir\run_tunnel_windows.bat" & chr(34), 0
+Set WshShell = Nothing
+"@
+[System.IO.File]::WriteAllText($VbsScriptPath, $VbsContent)
+Write-Success "Gizli arka plan çalıştırıcı oluşturuldu (run_background_windows.vbs)."
+
+# Startup (Başlangıç) Klasörüne Kısayol Ekleme
+try {
+    $StartupFolder = [System.Environment]::GetFolderPath("Startup")
+    $StartupShortcutPath = Join-Path $StartupFolder "OsesPOS_AutoStart.lnk"
+    $StartupShortcut = $WScriptShell.CreateShortcut($StartupShortcutPath)
+    $StartupShortcut.TargetPath = "wscript.exe"
+    $StartupShortcut.Arguments = "`"$VbsScriptPath`""
+    $StartupShortcut.WorkingDirectory = $ProjectDir
+    $StartupShortcut.Description = "O Ses POS Sunucusu ve Tüneli Otomatik Başlatıcı"
+    $StartupShortcut.Save()
+    Write-Success "Windows Başlangıç Klasörüne (Startup) eklendi: Elektrik geldiğinde PC açılınca otomatik başlayacak!"
+} catch {
+    Write-Warn "Başlangıç klasörüne kısayol eklenirken bir hata oluştu."
+}
+
+# Windows Görev Zamanlayıcısı (Task Scheduler) Kaydı
+if ($isAdmin) {
+    try {
+        $TaskName = "OsesPOS_AutoServer"
+        schtasks /Delete /TN $TaskName /F 2>$null
+        $schCmd = "schtasks /Create /TN `"$TaskName`" /TR `"wscript.exe `\`"$VbsScriptPath`\`"`" /SC ONLOGON /RL HIGHEST /F"
+        Invoke-Expression $schCmd | Out-Null
+        Write-Success "Windows Görev Zamanlayıcısı'na ($TaskName) eklendi!"
+    } catch {
+        Write-Warn "Görev zamanlayıcısı kaydı oluşturulamadı."
+    }
+}
 
 Write-Host ""
 Write-Host "======================================================================" -ForegroundColor Green
-Write-Host " 🎉 TEBRİKLER! O SES POS TÜM SİSTEM GEREKSİNİMLERİ BAŞARIYLA KURULDU! " -ForegroundColor Yellow
+Write-Host " 🎉 TEBRİKLER! O SES POS SİSTEMİ VE OTOMATİK BAŞLATMA AYARLANDI! " -ForegroundColor Yellow
 Write-Host "======================================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "🚀 POS Uygulamasını Başlatmak İçin:" -ForegroundColor Cyan
-Write-Host "   1. Masaüstündeki 'O Ses POS - Kasa Başlat' kısayoluna çift tıklayın." -ForegroundColor White
-Write-Host "   2. Veya '$ProjectDir\run_windows.bat' dosyasını çalıştırın." -ForegroundColor White
-Write-Host ""
-Write-Host "📱 QR Masadan Sipariş Tünelini Başlatmak İçin:" -ForegroundColor Cyan
-Write-Host "   - '$ProjectDir\run_tunnel_windows.bat' dosyasını çalıştırın." -ForegroundColor White
+Write-Host "⚡ ELEKTRİK KESİNTİSİ & AÇILIŞ UYARISI:" -ForegroundColor Cyan
+Write-Host "   - Elektrik gelip bilgisayar açıldığında POS Sunucusu ve QR Tüneli" -ForegroundColor White
+Write-Host "     arka planda HİÇBİR PENCERE AÇILMADAN otomatik olarak çalışacaktır." -ForegroundColor White
+Write-Host "   - Bilgisayarın elektrik geldiğinde kendi kendine açılması için" -ForegroundColor White
+Write-Host "     BIOS menüsünden 'AC Power Recovery -> Power On' seçeneğini açmanız yeterlidir." -ForegroundColor Yellow
 Write-Host ""
 
 $response = Read-Host "Şimdi POS uygulamasını başlatmak ister misiniz? (E/H)"
 if ($response -eq 'E' -or $response -eq 'e') {
-    Write-Host "🚀 POS Sunucusu Başlatılıyor..." -ForegroundColor Green
-    Start-Process -FilePath "$ProjectDir\run_windows.bat" -WorkingDirectory $ProjectDir
+    Write-Host "🚀 POS Sunucusu ve Tünel Arka Planda Başlatılıyor..." -ForegroundColor Green
+    Start-Process -FilePath "wscript.exe" -ArgumentList "`"$VbsScriptPath`"" -WorkingDirectory $ProjectDir
 }
