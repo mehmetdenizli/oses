@@ -2315,15 +2315,20 @@ class POSApp {
 
     if (urlText) urlText.innerText = qrUrl;
     if (imgContainer) {
-      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
-      imgContainer.innerHTML = `<img src="${qrApiUrl}" alt="QR Menü" style="width:200px; height:200px; border-radius:8px;" />`;
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=15&data=${encodeURIComponent(qrUrl)}`;
+      imgContainer.innerHTML = `
+        <img src="${qrApiUrl}" alt="QR Menü" style="width:210px; height:210px; border-radius:8px; display:block; margin:0 auto;" />
+        <div style="font-size:0.75rem; color:#059669; font-weight:700; margin-top:8px;">
+          👉 Kamerayı tutunca çıkan <u>linke / baloncuga</u> dokunun (Google'da aratmayın)
+        </div>
+      `;
     }
   }
 
   printQRCodeSticker() {
     const tableName = this.activeQRTableName || 'Masa 1';
     const qrUrl = this.activeQRUrl || this.getQRTargetUrl(tableName);
-    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=15&data=${encodeURIComponent(qrUrl)}`;
 
     const printArea = document.getElementById('receipt-print-area');
     if (!printArea) return;
@@ -2336,8 +2341,8 @@ class POSApp {
         </div>
         <p style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">📱 KAREKOD İLE MASADAN SİPARİŞ</p>
         <img src="${qrApiUrl}" style="width: 180px; height: 180px; margin: 8px 0;" />
-        <p style="font-size: 0.8rem; margin-top: 6px; font-weight: 600;">Kameranız ile QR kodu okutarak temassız sipariş verebilirsiniz!</p>
-        <p style="font-size: 0.72rem; font-weight: 700; margin-top: 4px; word-break: break-all;">${qrUrl}</p>
+        <p style="font-size: 0.8rem; margin-top: 6px; font-weight: 700; color: #1E293B;">Kameranızı tutun ve çıkan linke / baloncuga dokunun!</p>
+        <p style="font-size: 0.72rem; font-weight: 700; margin-top: 4px; word-break: break-all; color: #D32F2F;">${qrUrl}</p>
       </div>
     `;
 
@@ -2352,7 +2357,7 @@ class POSApp {
     let html = '';
     tables.forEach(table => {
       const qrUrl = this.getQRTargetUrl(table);
-      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=15&data=${encodeURIComponent(qrUrl)}`;
       html += `
         <div style="font-family: sans-serif; text-align: center; padding: 20px; width: 80mm; margin: 0 auto 20px auto; border: 2px dashed #000; page-break-after: always;">
           <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 2px;">🌶️ O SES ÇİĞKÖFTE</h2>
@@ -2361,8 +2366,8 @@ class POSApp {
           </div>
           <p style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">📱 KAREKOD İLE MASADAN SİPARİŞ</p>
           <img src="${qrApiUrl}" style="width: 180px; height: 180px; margin: 8px 0;" />
-          <p style="font-size: 0.8rem; margin-top: 6px; font-weight: 600;">Kameranız ile QR kodu okutarak temassız sipariş verebilirsiniz!</p>
-          <p style="font-size: 0.72rem; font-weight: 700; margin-top: 4px; word-break: break-all;">${qrUrl}</p>
+          <p style="font-size: 0.8rem; margin-top: 6px; font-weight: 700; color: #1E293B;">Kameranızı tutun ve çıkan linke / baloncuga dokunun!</p>
+          <p style="font-size: 0.72rem; font-weight: 700; margin-top: 4px; word-break: break-all; color: #D32F2F;">${qrUrl}</p>
         </div>
       `;
     });
