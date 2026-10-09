@@ -41,6 +41,23 @@ class POSApp {
     this.renderProductGrid();
     this.renderCart();
     this.startQROrderAutoPrintPoller();
+    this.setupKeyboardShortcuts();
+  }
+
+  setupKeyboardShortcuts() {
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.code === 'Escape') {
+        if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+          else if (document.msExitFullscreen) document.msExitFullscreen();
+        }
+      }
+      if (e.key === 'F11' || e.code === 'F11') {
+        e.preventDefault();
+        this.toggleFullscreen();
+      }
+    });
   }
 
   // --- API Fetches ---
