@@ -701,7 +701,7 @@ class POSApp {
     if (!container) return;
 
     try {
-      const url = query ? `/api/customers/search?q=${encodeURIComponent(query)}` : '/api/customers/search?q=0';
+      const url = query ? `/api/customers/search?q=${encodeURIComponent(query)}` : '/api/customers/search';
       const res = await fetch(url);
       const list = await res.json();
 
@@ -1841,6 +1841,7 @@ class POSApp {
       </div>
 
       <div class="receipt-footer">
+        <div class="receipt-order-phone">📞 SİPARİŞ HATTI: 0552 611 86 61</div>
         <div class="receipt-footer-title">AFİYET OLSUN!</div>
         <div class="receipt-footer-sub">Bizi Tercih Ettiğiniz İçin Teşekkür Ederiz.</div>
       </div>

@@ -223,8 +223,8 @@ def reset_menu():
 # --- Customer Endpoints ---
 
 @app.get("/api/customers/search")
-def search_customers(q: str = Query(..., min_length=1)):
-    return database.search_customers(q)
+def search_customers(q: Optional[str] = ""):
+    return database.search_customers(q or "")
 
 @app.get("/api/customers/{phone}")
 def get_customer(phone: str):

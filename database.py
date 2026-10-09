@@ -592,9 +592,15 @@ def delete_customer(phone: str):
     conn.close()
     return {"status": "success", "message": f"Müşteri {clean_phone} silindi."}
 
-def search_customers(query: str):
+def search_customers(query: str = ""):
     conn = get_db_connection()
-    clean_query = query.strip()
+    clean_query = query.strip() if query else ""
+
+    if not clean_query:
+        rows = conn.execute("SELECT * FROM customers ORDER BY total_orders DESC, created_at DESC LIMIT 50").fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
     digits_only = "".join(filter(str.isdigit, clean_query))
 
     if digits_only:
