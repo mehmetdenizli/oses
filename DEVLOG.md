@@ -40,9 +40,10 @@ Bu dosya, projedeki tüm geliştirme aşamalarını, veritabanı güncellemeleri
   - Açık masadan ödeme alındığında adisyon `TAMAMLANDI` durumuna geçer ancak **ikinci kez gereksiz termal fiş basımı YAPILMAZ**.
   - Kredi kartı ödemelerinde inPOS m530 cihazı banka POS slipini kendisi basar.
 
-#### 🏷️ 4. Çiftli Fiyatlandırma Mimarisi (Gel-Al & Masa Fiyatı) (`database.py`, `main.py`, `app.js`)
+#### 🏷️ 4. Çiftli Fiyatlandırma Mimarisi (Gel-Al & Masa Fiyatı) & Veri Kalıcılığı (`database.py`, `main.py`, `app.js`)
 - Her ürün için 2 ayrı fiyat tutulur: `price` (Gel-Al Fiyatı) ve `price_masa` (Masa / Salon Fiyatı).
 - `PATCH /api/products/{id}/price` endpoint'i ile hızlı fiyat güncelleme sağlandı.
+- **💾 Fiyat Güncellemesi Kalıcılık Düzeltmesi (`database.py`):** Sunucu veya bilgisayar yeniden başladığında `init_db()` metodunun veritabanını sıfırlaması engellendi; güncellenen tüm fiyatların bilgisayar kapatılıp açılsa bile SQLite veritabanında kalıcı olarak saklanması sağlandı.
 
 #### 🪟 5. Windows 10/11 Tam Otomatik Kurulum Sihirbazı (`windows_installer/`)
 - Cross-Platform Mimari: Mac ve Windows işletim sistemlerinde tam uyumlu.

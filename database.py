@@ -183,12 +183,10 @@ def init_db():
 
     conn.commit()
 
-    # Seed initial data if categories table is empty or update products to match menu image
+    # Seed initial data ONLY if categories table is empty (fresh database)
     cursor.execute("SELECT COUNT(*) FROM categories")
     if cursor.fetchone()[0] == 0:
         seed_default_data(conn)
-    else:
-        reset_products_to_menu(conn)
 
     # Seed option groups if empty
     cursor.execute("SELECT COUNT(*) FROM option_groups")
