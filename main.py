@@ -6,6 +6,15 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from pathlib import Path
 from contextlib import asynccontextmanager
+import subprocess
+import threading
+import socket
+import re
+import sys
+import os
+import time
+import json
+import urllib.request
 import database
 from gmp3_driver import GMP3Driver
 
@@ -15,7 +24,14 @@ STATIC_DIR = BASE_DIR / "static"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     database.init_db()
+    # Reset stale tunnel status on boot
+    tunnel_file = STATIC_DIR / "tunnel_url.json"
+    try:
+        tunnel_file.write_text(json.dumps({"url": None, "active": False}), encoding="utf-8")
+    except Exception:
+        pass
     yield
+    stop_tunnel_process()
 
 app = FastAPI(
     title="O Ses Çiğköfte POS & Adisyon Sistemi",
@@ -364,27 +380,191 @@ def analytics_report(
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# --- Cloudflare Tunnel Management Endpoints ---
+# --- Cloudflare Tunnel Management ---
+
+tunnel_process = None
+tunnel_info = {
+    "url": None,
+    "active": False,
+    "started_at": None,
+    "error": None
+}
+
+def get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.5)
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return '127.0.0.1'
+
+def find_cloudflared_binary():
+    if sys.platform == 'win32':
+        win_bin = BASE_DIR / 'cloudflared.exe'
+        if win_bin.exists():
+            return str(win_bin)
+    else:
+        mac_bin = BASE_DIR / 'cloudflared'
+        if mac_bin.exists() and os.access(mac_bin, os.X_OK):
+            return str(mac_bin)
+    import shutil
+    cmd = shutil.which('cloudflared')
+    if cmd:
+        return cmd
+    return None
+
+def download_cloudflared_if_needed():
+    existing = find_cloudflared_binary()
+    if existing:
+        return existing
+    if sys.platform == 'win32':
+        dest = BASE_DIR / "cloudflared.exe"
+        try:
+            url = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+            urllib.request.urlretrieve(url, str(dest))
+            return str(dest)
+        except Exception as e:
+            print("cloudflared download failed:", e)
+            return None
+    return None
+
+def start_tunnel_process():
+    global tunnel_process, tunnel_info
+    if tunnel_process and tunnel_process.poll() is None and tunnel_info["active"] and tunnel_info["url"]:
+        return {"status": "already_running", "data": tunnel_info}
+
+    binary = download_cloudflared_if_needed()
+    if not binary:
+        tunnel_info["active"] = False
+        tunnel_info["error"] = "cloudflared dosyası bulunamadı!"
+        return {"status": "error", "message": tunnel_info["error"]}
+
+    try:
+        if tunnel_process:
+            try:
+                tunnel_process.terminate()
+            except Exception:
+                pass
+
+        tunnel_info["active"] = False
+        tunnel_info["url"] = None
+        tunnel_info["error"] = None
+
+        proc = subprocess.Popen(
+            [binary, 'tunnel', '--url', 'http://127.0.0.1:8000'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1
+        )
+        tunnel_process = proc
+
+        detected_url = None
+        start_time = time.time()
+        while time.time() - start_time < 15:
+            if proc.poll() is not None:
+                break
+            line = proc.stderr.readline()
+            if not line:
+                time.sleep(0.2)
+                continue
+            m = re.search(r'https://[a-zA-Z0-9-]+\.trycloudflare\.com', line)
+            if m and 'api.trycloudflare.com' not in m.group(0):
+                detected_url = m.group(0)
+                break
+
+        if detected_url:
+            tunnel_info["url"] = detected_url
+            tunnel_info["active"] = True
+            tunnel_info["started_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+            tunnel_info["error"] = None
+
+            tunnel_file = STATIC_DIR / "tunnel_url.json"
+            tunnel_file.write_text(json.dumps(tunnel_info), encoding="utf-8")
+
+            def _drain():
+                try:
+                    for _ in proc.stderr:
+                        pass
+                except Exception:
+                    pass
+            threading.Thread(target=_drain, daemon=True).start()
+
+            return {"status": "success", "data": tunnel_info}
+        else:
+            tunnel_info["active"] = False
+            tunnel_info["error"] = "Tünel linki 15 saniyede alınamadı."
+            return {"status": "error", "message": tunnel_info["error"]}
+
+    except Exception as e:
+        tunnel_info["active"] = False
+        tunnel_info["error"] = str(e)
+        return {"status": "error", "message": str(e)}
+
+def stop_tunnel_process():
+    global tunnel_process, tunnel_info
+    if tunnel_process:
+        try:
+            tunnel_process.terminate()
+            tunnel_process.wait(timeout=2)
+        except Exception:
+            try:
+                tunnel_process.kill()
+            except Exception:
+                pass
+        tunnel_process = None
+
+    tunnel_info["active"] = False
+    tunnel_info["url"] = None
+    tunnel_file = STATIC_DIR / "tunnel_url.json"
+    try:
+        tunnel_file.write_text(json.dumps(tunnel_info), encoding="utf-8")
+    except Exception:
+        pass
+    return {"status": "stopped", "data": tunnel_info}
 
 @app.get("/api/tunnel-url")
-def get_tunnel_url():
-    tunnel_file = STATIC_DIR / "tunnel_url.json"
-    if tunnel_file.exists():
-        try:
-            import json
-            data = json.loads(tunnel_file.read_text(encoding="utf-8"))
-            return data
-        except Exception:
-            pass
-    return {"url": None, "active": False}
+def get_tunnel_status():
+    local_ip = get_local_ip()
+    is_running = False
+    if tunnel_process and tunnel_process.poll() is None:
+        is_running = True
+    elif tunnel_info.get("active") and tunnel_info.get("url"):
+        is_running = True
+
+    return {
+        "url": tunnel_info.get("url") if is_running else None,
+        "active": is_running,
+        "local_ip": local_ip,
+        "local_url": f"http://{local_ip}:8000/qr",
+        "has_binary": find_cloudflared_binary() is not None,
+        "error": tunnel_info.get("error")
+    }
 
 @app.post("/api/tunnel-url")
 async def save_tunnel_url(request: Request):
     data = await request.json()
+    global tunnel_info
+    tunnel_info["url"] = data.get("url")
+    tunnel_info["active"] = data.get("active", True)
+    tunnel_info["error"] = None
     tunnel_file = STATIC_DIR / "tunnel_url.json"
-    import json
-    tunnel_file.write_text(json.dumps(data), encoding="utf-8")
-    return {"status": "success", "data": data}
+    tunnel_file.write_text(json.dumps(tunnel_info), encoding="utf-8")
+    return {"status": "success", "data": tunnel_info}
+
+@app.post("/api/tunnel-start")
+def api_start_tunnel():
+    res = start_tunnel_process()
+    if res.get("status") == "error":
+        raise HTTPException(status_code=500, detail=res.get("message", "Tünel başlatılamadı"))
+    return res
+
+@app.post("/api/tunnel-stop")
+def api_stop_tunnel():
+    return stop_tunnel_process()
 
 # --- Store Settings & Image Upload Endpoints ---
 

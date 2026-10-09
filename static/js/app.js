@@ -2100,47 +2100,173 @@ class POSApp {
   }
 
   async openQRGeneratorModal() {
-    let baseUrl = `${window.location.protocol}//${window.location.host}/qr`;
+    this.qrMode = this.qrMode || 'tunnel';
+    this.tunnelState = {
+      active: false,
+      url: null,
+      local_ip: null,
+      local_url: null,
+      loading: false
+    };
 
-    try {
-      const res = await fetch('/api/tunnel-url');
-      const data = await res.json();
-      if (data && data.url) {
-        baseUrl = data.url.endsWith('/qr') ? data.url : `${data.url}/qr`;
-      }
-    } catch (e) { }
+    await this.fetchTunnelStatus();
 
-    this.defaultQRBaseUrl = baseUrl;
-    const customDomainInput = document.getElementById('qr-custom-domain');
-    if (customDomainInput && !customDomainInput.value) {
-      // If user saved a custom domain in localStorage, populate it
-      const savedDomain = localStorage.getItem('oses_qr_domain');
-      if (savedDomain) customDomainInput.value = savedDomain;
-    }
+    const modeSelect = document.getElementById('qr-mode-select');
+    if (modeSelect) modeSelect.value = this.qrMode;
 
+    this.renderQRConnectionStatus();
     this.updateQRGeneratorPreview();
     this.openModal('modal-qr-generator');
   }
 
+  async fetchTunnelStatus() {
+    try {
+      const res = await fetch('/api/tunnel-url');
+      const data = await res.json();
+      this.tunnelState = {
+        active: !!data.active,
+        url: data.url || null,
+        local_ip: data.local_ip || '127.0.0.1',
+        local_url: data.local_url || `http://${window.location.hostname}:8000/qr`,
+        loading: false
+      };
+    } catch (e) {
+      console.error('Tunnel status error:', e);
+    }
+  }
+
+  async startCloudflareTunnel() {
+    this.tunnelState.loading = true;
+    this.renderQRConnectionStatus();
+    this.showToast('🚀 Cloudflare tüneli başlatılıyor, lütfen bekleyin...', 'info');
+
+    try {
+      const res = await fetch('/api/tunnel-start', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.data && data.data.url) {
+        this.tunnelState.active = true;
+        this.tunnelState.url = data.data.url;
+        this.tunnelState.loading = false;
+        this.showToast('✅ Canlı tünel hazır! Karekod güncellendi.', 'success');
+      } else {
+        throw new Error(data.detail || data.message || 'Tünel başlatılamadı');
+      }
+    } catch (err) {
+      this.tunnelState.loading = false;
+      this.tunnelState.active = false;
+      this.showToast(`Hata: ${err.message}`, 'error');
+    }
+
+    this.renderQRConnectionStatus();
+    this.updateQRGeneratorPreview();
+  }
+
+  async stopCloudflareTunnel() {
+    this.showToast('Tünel kapatılıyor...', 'info');
+    try {
+      await fetch('/api/tunnel-stop', { method: 'POST' });
+      this.tunnelState.active = false;
+      this.tunnelState.url = null;
+      this.showToast('Tünel durduruldu.', 'info');
+    } catch (e) { }
+
+    this.renderQRConnectionStatus();
+    this.updateQRGeneratorPreview();
+  }
+
+  onQRModeChange() {
+    const modeSelect = document.getElementById('qr-mode-select');
+    if (modeSelect) {
+      this.qrMode = modeSelect.value;
+    }
+    this.renderQRConnectionStatus();
+    this.updateQRGeneratorPreview();
+  }
+
+  renderQRConnectionStatus() {
+    const box = document.getElementById('qr-connection-status-box');
+    if (!box) return;
+
+    if (this.qrMode === 'tunnel') {
+      if (this.tunnelState.loading) {
+        box.innerHTML = `
+          <div style="background: #FEF3C7; border: 1px solid #F59E0B; padding: 10px 14px; border-radius: 10px; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <div style="font-weight: 800; color: #92400E; font-size: 0.88rem;">⏳ Canlı Cloudflare Tüneli Açılıyor...</div>
+              <div style="font-size: 0.76rem; color: #B45309;">Genel internet bağlantı adresi alınıyor (yaklaşık 5 sn).</div>
+            </div>
+            <div style="font-size: 1.2rem;">⏳</div>
+          </div>
+        `;
+      } else if (this.tunnelState.active && this.tunnelState.url) {
+        box.innerHTML = `
+          <div style="background: #ECFDF5; border: 1px solid #6EE7B7; padding: 10px 14px; border-radius: 10px; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="overflow: hidden; flex: 1;">
+              <div style="font-weight: 800; color: #065F46; font-size: 0.88rem;">🟢 Canlı İnternet Tüneli Aktif (4G/5G Uyumlu)</div>
+              <div style="font-size: 0.76rem; color: #047857; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${this.tunnelState.url}</div>
+            </div>
+            <button class="btn-secondary" style="padding: 5px 12px; font-size: 0.78rem; white-space: nowrap;" onclick="app.stopCloudflareTunnel()">⏹️ Kapat</button>
+          </div>
+        `;
+      } else {
+        box.innerHTML = `
+          <div style="background: #FEF2F2; border: 1px solid #FCA5A5; padding: 10px 14px; border-radius: 10px; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="flex: 1;">
+              <div style="font-weight: 800; color: #991B1B; font-size: 0.88rem;">🔴 Canlı İnternet Tüneli Kapalı</div>
+              <div style="font-size: 0.76rem; color: #B91C1C;">Müşterilerin 4G/5G ile açabilmesi için tüneli başlatın veya Wi-Fi moduna geçin.</div>
+            </div>
+            <button class="btn-primary" style="padding: 6px 12px; font-size: 0.82rem; background: #EF4444; white-space: nowrap;" onclick="app.startCloudflareTunnel()">🚀 Tüneli Başlat</button>
+          </div>
+        `;
+      }
+    } else if (this.qrMode === 'wifi') {
+      const ip = (this.tunnelState && this.tunnelState.local_ip) ? this.tunnelState.local_ip : window.location.hostname;
+      box.innerHTML = `
+        <div style="background: #EFF6FF; border: 1px solid #93C5FD; padding: 10px 14px; border-radius: 10px; text-align: left;">
+          <div style="font-weight: 800; color: #1E40AF; font-size: 0.88rem;">📶 Dükkan Wi-Fi Ağı (Yerel Bağlantı)</div>
+          <div style="font-size: 0.76rem; color: #2563EB;">Müşteri veya personel telefonu dükkan Wi-Fi'ına bağlıyken <strong>tünelsiz ve anında</strong> çalışır.</div>
+          <div style="font-size: 0.76rem; color: #64748B; margin-top: 3px;">Kasa Yerel Adresi: <strong>http://${ip}:8000/qr</strong></div>
+        </div>
+      `;
+    } else if (this.qrMode === 'custom') {
+      const savedDomain = localStorage.getItem('oses_qr_domain') || '';
+      box.innerHTML = `
+        <div style="background: #F8FAFC; border: 1px solid #CBD5E1; padding: 10px 14px; border-radius: 10px; text-align: left;">
+          <label style="font-size: 0.8rem; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">🌐 Sabit Domain (Vercel vb.):</label>
+          <input type="text" id="qr-custom-domain" class="form-input" style="padding: 7px 10px; font-size: 0.85rem; width: 100%;" placeholder="Örn: https://oses-kadikoy.vercel.app" value="${savedDomain}" oninput="app.updateQRGeneratorPreview()" />
+          <div style="font-size: 0.74rem; color: #64748B; margin-top: 4px;">Masalara bir kez basılacak ömür boyu kalıcı QR etiketler için Vercel adresi.</div>
+        </div>
+      `;
+    }
+  }
+
   getQRTargetUrl(tableName) {
-    const customDomainInput = document.getElementById('qr-custom-domain');
-    let base = customDomainInput && customDomainInput.value.trim() ? customDomainInput.value.trim() : this.defaultQRBaseUrl;
-    if (!base) base = `${window.location.protocol}//${window.location.host}/qr`;
-    
-    // Save custom domain if entered
-    if (customDomainInput && customDomainInput.value.trim()) {
-      localStorage.setItem('oses_qr_domain', customDomainInput.value.trim());
+    if (this.qrMode === 'custom') {
+      const customDomainInput = document.getElementById('qr-custom-domain');
+      let base = customDomainInput && customDomainInput.value.trim() ? customDomainInput.value.trim() : (localStorage.getItem('oses_qr_domain') || '');
+      if (base) {
+        localStorage.setItem('oses_qr_domain', base);
+        base = base.split('?')[0].replace(/\/+$/, '');
+        if (!base.endsWith('/qr')) base = `${base}/qr`;
+        return `${base}?masa=${encodeURIComponent(tableName)}`;
+      }
     }
 
-    // Remove existing query params and trailing slashes
-    base = base.split('?')[0].replace(/\/+$/, '');
-
-    // Append path /qr if missing
-    if (!base.endsWith('/qr')) {
-      base = `${base}/qr`;
+    if (this.qrMode === 'wifi') {
+      const ip = (this.tunnelState && this.tunnelState.local_ip) ? this.tunnelState.local_ip : window.location.hostname;
+      return `http://${ip}:8000/qr?masa=${encodeURIComponent(tableName)}`;
     }
 
-    return `${base}?masa=${encodeURIComponent(tableName)}`;
+    // Default: Tunnel mode
+    if (this.tunnelState && this.tunnelState.active && this.tunnelState.url) {
+      let base = this.tunnelState.url.split('?')[0].replace(/\/+$/, '');
+      if (!base.endsWith('/qr')) base = `${base}/qr`;
+      return `${base}?masa=${encodeURIComponent(tableName)}`;
+    }
+
+    // Tunnel is not running -> fallback to local wifi
+    const ip = (this.tunnelState && this.tunnelState.local_ip) ? this.tunnelState.local_ip : window.location.hostname;
+    return `http://${ip}:8000/qr?masa=${encodeURIComponent(tableName)}`;
   }
 
   updateQRGeneratorPreview() {
@@ -2163,7 +2289,7 @@ class POSApp {
 
   printQRCodeSticker() {
     const tableName = this.activeQRTableName || 'Masa 1';
-    const qrUrl = this.activeQRUrl || `${window.location.protocol}//${window.location.host}/qr?masa=Masa1`;
+    const qrUrl = this.activeQRUrl || this.getQRTargetUrl(tableName);
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
 
     const printArea = document.getElementById('receipt-print-area');

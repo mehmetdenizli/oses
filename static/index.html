@@ -804,15 +804,16 @@
 
   <!-- Karekod (QR) Oluşturucu ve Yazdırma Modalı -->
   <div class="modal-overlay" id="modal-qr-generator">
-    <div class="modal-card" style="max-width: 520px; text-align: center;">
+    <div class="modal-card" style="max-width: 540px; text-align: center;">
       <div class="modal-header">
         <div class="modal-title">
           📱 Karekod (QR) Menü & Masa Etiketi Oluşturucu
         </div>
         <button class="btn-close-modal" onclick="app.closeModal('modal-qr-generator')">✕</button>
       </div>
-      <div class="modal-body" style="padding: 20px;">
-        <div style="display: flex; gap: 10px; margin-bottom: 14px; text-align: left;">
+      <div class="modal-body" style="padding: 16px 20px;">
+        <!-- Masa Seçimi & Bağlantı Türü -->
+        <div style="display: flex; gap: 10px; margin-bottom: 12px; text-align: left;">
           <div style="flex: 1;">
             <label style="font-size: 0.8rem; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">🪑 MASA SEÇİMİ:</label>
             <select id="qr-table-select" class="form-input" style="padding: 8px; font-weight: 700;" onchange="app.updateQRGeneratorPreview()">
@@ -829,21 +830,28 @@
               <option value="Tezgah">Tezgah / Gel-Al</option>
             </select>
           </div>
-          <div style="flex: 1.2;">
-            <label style="font-size: 0.8rem; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">🌐 SABİT DOMAIN (VERCEL):</label>
-            <input type="text" id="qr-custom-domain" class="form-input" style="padding: 8px; font-size: 0.85rem;" placeholder="Örn: https://oses-pos.vercel.app" oninput="app.updateQRGeneratorPreview()" />
+          <div style="flex: 1.3;">
+            <label style="font-size: 0.8rem; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">📡 BAĞLANTI TÜRÜ:</label>
+            <select id="qr-mode-select" class="form-input" style="padding: 8px; font-weight: 700;" onchange="app.onQRModeChange()">
+              <option value="tunnel">☁️ Canlı İnternet (Cloudflare / 4G)</option>
+              <option value="wifi">📶 Dükkan Wi-Fi (Yerel Ağ)</option>
+              <option value="custom">🌐 Sabit Domain (Vercel vb.)</option>
+            </select>
           </div>
         </div>
 
+        <!-- Bağlantı Durum / Kontrol Kutusu -->
+        <div id="qr-connection-status-box" style="margin-bottom: 12px;"></div>
+
         <div
-          style="background: white; padding: 20px; border-radius: 16px; border: 2px dashed #CBD5E1; display: inline-block; margin-bottom: 12px;"
+          style="background: white; padding: 16px; border-radius: 16px; border: 2px dashed #CBD5E1; display: inline-block; margin-bottom: 10px;"
           id="qr-code-img-container">
           <!-- QR image rendered dynamically -->
         </div>
 
-        <div style="font-family: var(--font-mono); font-weight: 700; color: var(--primary-red); font-size: 0.95rem; word-break: break-all;"
+        <div style="font-family: var(--font-mono); font-weight: 700; color: var(--primary-red); font-size: 0.88rem; word-break: break-all;"
           id="qr-url-text">
-          http://localhost:8000/qr?masa=Masa1
+          -
         </div>
       </div>
       <div class="modal-footer" style="justify-content: center; gap: 8px; flex-wrap: wrap;">
@@ -910,7 +918,7 @@
   </div>
 
   <!-- JavaScript Bundle -->
-  <script src="/static/js/app.js?v=1.0.21"></script>
+  <script src="/static/js/app.js?v=1.0.22"></script>
 </body>
 
 </html>
