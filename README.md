@@ -26,6 +26,7 @@ Dokunmatik kasa uyumlu, **inPOS m530 YN ÖKC POS entegrasyonlu**, sıfır harici
 
 ## 📚 Dokümantasyon & Rehberler
 
+- 📜 [Proje Geliştirme Hikayesi ve Evreleri (PROJECT_HISTORY)](PROJECT_HISTORY.md)
 - 📝 [Geliştirici Günlüğü (DEVLOG)](DEVLOG.md)
 - 🪟 [Windows Otomatik Kurulum Sihirbazı](windows_installer/README.md)
 - 📖 [Windows Detaylı Kurulum ve Kullanım Kılavuzu](WINDOWS_KURULUM_VE_KULLANIM.md)
