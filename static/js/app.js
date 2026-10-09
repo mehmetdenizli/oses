@@ -1834,15 +1834,15 @@ class POSApp {
           <span>TOPLAM:</span>
           <span>₺${order.total_amount.toFixed(2)}</span>
         </div>
-        <div class="receipt-total-row" style="margin-top:4px;">
+        <div class="receipt-total-row payment-type-row" style="margin-top:4px;">
           <span>Ödeme Türü:</span>
           <strong>${paymentLabel}</strong>
         </div>
       </div>
 
       <div class="receipt-footer">
-        <div>AFİYET OLSUN!</div>
-        <div style="font-weight:normal; font-size:9px; margin-top:2px;">Bizi Tercih Ettiğiniz İçin Teşekkür Ederiz.</div>
+        <div class="receipt-footer-title">AFİYET OLSUN!</div>
+        <div class="receipt-footer-sub">Bizi Tercih Ettiğiniz İçin Teşekkür Ederiz.</div>
       </div>
     `;
 
