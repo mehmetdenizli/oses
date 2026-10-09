@@ -194,7 +194,28 @@ def init_db():
     if cursor.fetchone()[0] == 0:
         reset_options_to_default(conn)
 
+    # Seed default customers if empty (for fresh Windows/Mac installs)
+    cursor.execute("SELECT COUNT(*) FROM customers")
+    if cursor.fetchone()[0] == 0:
+        seed_default_customers(conn)
+
     conn.close()
+
+def seed_default_customers(conn):
+    cursor = conn.cursor()
+    sample_customers = [
+        ("05321002030", "Ahmet Yılmaz", "Atatürk Mah. Karanfil Sok. No: 14 D: 3, Kadıköy / İstanbul", "Acısız tercih ediyor, zile basmayın bebek uyuyor.", 5),
+        ("05559876543", "Ayşe Demir", "Moda Cad. Güneş Apt. No: 82/4, Kadıköy", "Bol nar ekşisi ve ekstra limon istiyor.", 3),
+        ("05370606585", "Mehmet Denizli", "İnönü Mah. Ortahisar / Trabzon", "Müdür / Yönetici", 12),
+        ("05440001122", "Kapsamlı Test Müşterisi", "Moda Cad. No: 50 Kadıköy", "Veresiye defterine yaz", 14),
+        ("05515753200", "Sipariş Hattı Müşterisi", "Kahraman Maraş Cad. No:36/A Trabzon", "Hızlı paket servis", 8)
+    ]
+    for phone, name, addr, notes, orders in sample_customers:
+        cursor.execute("""
+            INSERT OR IGNORE INTO customers (phone, name, address, notes, total_orders)
+            VALUES (?, ?, ?, ?, ?)
+        """, (phone, name, addr, notes, orders))
+    conn.commit()
 
 def seed_default_data(conn):
     cursor = conn.cursor()
