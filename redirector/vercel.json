@@ -1,17 +1,9 @@
 {
   "version": 2,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/update",
-      "dest": "/api/update.js"
-    },
-    {
-      "src": "/qr",
-      "dest": "/api/redirect.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/api/redirect.js"
+      "source": "/(.*)",
+      "destination": "/api/index.js"
     }
   ]
 }
