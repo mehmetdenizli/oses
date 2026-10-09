@@ -1783,6 +1783,8 @@ class POSApp {
     const storeTitle = (this.storeSettings && this.storeSettings.store_name) ? this.storeSettings.store_name : 'OSES BAĞLAR';
     const storeSubtitle = (this.storeSettings && this.storeSettings.store_subtitle) ? this.storeSettings.store_subtitle : 'LEZZETİN ADRESİNE HOŞGELDİNİZ';
 
+    const storePhone = (this.storeSettings && this.storeSettings.store_phone) ? this.storeSettings.store_phone : '0551 575 32 00';
+
     printArea.innerHTML = `
       <div class="receipt-header">
         <div class="receipt-logo-title">${storeTitle}</div>
@@ -1841,7 +1843,7 @@ class POSApp {
       </div>
 
       <div class="receipt-footer">
-        <div class="receipt-order-phone">📞 SİPARİŞ HATTI: 0552 611 86 61</div>
+        <div class="receipt-order-phone">📞 SİPARİŞ HATTI: ${storePhone}</div>
         <div class="receipt-footer-title">AFİYET OLSUN!</div>
         <div class="receipt-footer-sub">Bizi Tercih Ettiğiniz İçin Teşekkür Ederiz.</div>
       </div>

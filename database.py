@@ -83,8 +83,9 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM store_settings")
     if cursor.fetchone()[0] == 0:
         default_settings = [
-            ("store_name", "O SES ÇİĞKÖFTE"),
-            ("store_subtitle", "HIZLI KASA & ADİSYON POS"),
+            ("store_name", "OSES BAĞLAR"),
+            ("store_subtitle", "LEZZETİN ADRESİNE HOŞGELDİNİZ"),
+            ("store_phone", "0551 575 32 00"),
             ("store_logo_url", ""),
             ("admin_pin", "oses1234"),
             ("gmp3_enabled", "1"),
