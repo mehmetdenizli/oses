@@ -1767,12 +1767,12 @@ class POSApp {
     order.items.forEach(item => {
       itemsHtml += `
         <tr>
-          <td style="width:10%; text-align:left;">${item.quantity}x</td>
-          <td style="width:65%;">
-            ${item.product_name}
-            ${item.options_summary ? `<div class="receipt-item-options">* ${item.options_summary}</div>` : ''}
+          <td style="width:14%; text-align:left; font-weight:900;">${item.quantity}x</td>
+          <td style="width:58%; text-align:left;">
+            <div style="font-weight:900;">${item.product_name}</div>
+            ${item.options_summary ? `<div class="receipt-item-options">↳ ${item.options_summary}</div>` : ''}
           </td>
-          <td style="width:25%; text-align:right;">₺${item.total_price.toFixed(2)}</td>
+          <td style="width:28%; text-align:right; font-weight:900;">₺${item.total_price.toFixed(2)}</td>
         </tr>
       `;
     });
@@ -1811,9 +1811,9 @@ class POSApp {
       <table class="receipt-items-table">
         <thead>
           <tr>
-            <th style="text-align:left;">Adet</th>
-            <th style="text-align:left;">Ürün / Opsiyon</th>
-            <th style="text-align:right;">Tutar</th>
+            <th style="width:14%; text-align:left;">ADET</th>
+            <th style="width:58%; text-align:left;">ÜRÜN</th>
+            <th style="width:28%; text-align:right;">TUTAR</th>
           </tr>
         </thead>
         <tbody>
@@ -1822,10 +1822,6 @@ class POSApp {
       </table>
 
       <div class="receipt-totals">
-        <div class="receipt-total-row">
-          <span>Ara Toplam:</span>
-          <span>₺${order.subtotal.toFixed(2)}</span>
-        </div>
         ${order.discount_amount > 0 ? `
         <div class="receipt-total-row">
           <span>İndirim Tutarı:</span>
