@@ -4,11 +4,26 @@ global.posTargetStore = global.posTargetStore || {
   lastUpdated: null
 };
 
+async function getTargetUrl() {
+  const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (kvUrl && kvToken) {
+    try {
+      const resp = await fetch(`${kvUrl}/get/targetUrl`, {
+        headers: { Authorization: `Bearer ${kvToken}` }
+      });
+      const data = await resp.json();
+      if (data && data.result) return data.result;
+    } catch (e) {}
+  }
+  return global.posTargetStore.targetUrl;
+}
+
 export default async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const searchParams = url.search; // preserves ?masa=Masa1 etc.
 
-  const activeTarget = global.posTargetStore.targetUrl;
+  const activeTarget = await getTargetUrl();
 
   if (activeTarget) {
     let cleanTarget = activeTarget.endsWith('/') ? activeTarget.slice(0, -1) : activeTarget;
