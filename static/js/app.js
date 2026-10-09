@@ -2100,7 +2100,7 @@ class POSApp {
   }
 
   async openQRGeneratorModal() {
-    this.qrMode = this.qrMode || 'tunnel';
+    this.qrMode = this.qrMode || 'custom';
     this.tunnelState = {
       active: false,
       url: null,
@@ -2147,7 +2147,7 @@ class POSApp {
         this.tunnelState.active = true;
         this.tunnelState.url = data.data.url;
         this.tunnelState.loading = false;
-        this.showToast('✅ Canlı tünel hazır! Karekod güncellendi.', 'success');
+        this.showToast('✅ Canlı tünel hazır! Vercel ve karekod güncellendi.', 'success');
       } else {
         throw new Error(data.detail || data.message || 'Tünel başlatılamadı');
       }
@@ -2187,7 +2187,28 @@ class POSApp {
     const box = document.getElementById('qr-connection-status-box');
     if (!box) return;
 
-    if (this.qrMode === 'tunnel') {
+    if (this.qrMode === 'custom') {
+      const savedDomain = localStorage.getItem('oses_qr_domain') || (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.vercel.app';
+      box.innerHTML = `
+        <div style="background: #ECFDF5; border: 1px solid #6EE7B7; padding: 12px 14px; border-radius: 12px; text-align: left;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <div style="font-weight: 800; color: #065F46; font-size: 0.92rem;">🔒 Ömür Boyu Sabit Vercel Adresi</div>
+            <span style="background: #10B981; color: white; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 20px;">SABİT & KALICI</span>
+          </div>
+          <div style="font-size: 0.78rem; color: #047857; margin-bottom: 6px;">
+            Masalara basılacak bu QR adresleri <strong>yıllarca hiç değişmez</strong>.
+          </div>
+          <input type="text" id="qr-custom-domain" class="form-input" style="padding: 7px 10px; font-size: 0.85rem; width: 100%; font-weight: 700; color: #065F46;" value="${savedDomain}" oninput="app.updateQRGeneratorPreview()" />
+          
+          <div style="margin-top: 10px; border-top: 1px dashed #A7F3D0; padding-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="font-size: 0.78rem; color: #065F46;">
+              ${this.tunnelState.active ? `🟢 <strong>Canlı Kasa Köprüsü Aktif:</strong> <span style="font-size:0.72rem; color:#047857;">${this.tunnelState.url}</span>` : `🔴 <strong>Kasa Köprüsü Kapalı:</strong> Müşterilerin 4G ile bağlanabilmesi için tüneli açın.`}
+            </div>
+            ${!this.tunnelState.active ? `<button class="btn-primary" style="padding: 5px 12px; font-size: 0.78rem; background: #EF4444; white-space: nowrap;" onclick="app.startCloudflareTunnel()">🚀 Tüneli Başlat</button>` : `<button class="btn-secondary" style="padding: 4px 10px; font-size: 0.75rem; white-space: nowrap;" onclick="app.stopCloudflareTunnel()">⏹️ Durdur</button>`}
+          </div>
+        </div>
+      `;
+    } else if (this.qrMode === 'tunnel') {
       if (this.tunnelState.loading) {
         box.innerHTML = `
           <div style="background: #FEF3C7; border: 1px solid #F59E0B; padding: 10px 14px; border-radius: 10px; text-align: left; display: flex; align-items: center; justify-content: space-between;">
@@ -2228,22 +2249,13 @@ class POSApp {
           <div style="font-size: 0.76rem; color: #64748B; margin-top: 3px;">Kasa Yerel Adresi: <strong>http://${ip}:8000/qr</strong></div>
         </div>
       `;
-    } else if (this.qrMode === 'custom') {
-      const savedDomain = localStorage.getItem('oses_qr_domain') || '';
-      box.innerHTML = `
-        <div style="background: #F8FAFC; border: 1px solid #CBD5E1; padding: 10px 14px; border-radius: 10px; text-align: left;">
-          <label style="font-size: 0.8rem; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">🌐 Sabit Domain (Vercel vb.):</label>
-          <input type="text" id="qr-custom-domain" class="form-input" style="padding: 7px 10px; font-size: 0.85rem; width: 100%;" placeholder="Örn: https://oses-kadikoy.vercel.app" value="${savedDomain}" oninput="app.updateQRGeneratorPreview()" />
-          <div style="font-size: 0.74rem; color: #64748B; margin-top: 4px;">Masalara bir kez basılacak ömür boyu kalıcı QR etiketler için Vercel adresi.</div>
-        </div>
-      `;
     }
   }
 
   getQRTargetUrl(tableName) {
     if (this.qrMode === 'custom') {
       const customDomainInput = document.getElementById('qr-custom-domain');
-      let base = customDomainInput && customDomainInput.value.trim() ? customDomainInput.value.trim() : (localStorage.getItem('oses_qr_domain') || '');
+      let base = customDomainInput && customDomainInput.value.trim() ? customDomainInput.value.trim() : (localStorage.getItem('oses_qr_domain') || (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.vercel.app');
       if (base) {
         localStorage.setItem('oses_qr_domain', base);
         base = base.split('?')[0].replace(/\/+$/, '');
@@ -2264,9 +2276,9 @@ class POSApp {
       return `${base}?masa=${encodeURIComponent(tableName)}`;
     }
 
-    // Tunnel is not running -> fallback to local wifi
-    const ip = (this.tunnelState && this.tunnelState.local_ip) ? this.tunnelState.local_ip : window.location.hostname;
-    return `http://${ip}:8000/qr?masa=${encodeURIComponent(tableName)}`;
+    // Fallback to custom Vercel domain if available
+    const fallbackDomain = (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.vercel.app';
+    return `${fallbackDomain}/qr?masa=${encodeURIComponent(tableName)}`;
   }
 
   updateQRGeneratorPreview() {

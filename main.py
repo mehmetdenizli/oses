@@ -80,6 +80,7 @@ class StoreSettingsSchema(BaseModel):
     gmp3_ip: Optional[str] = "192.168.1.100"
     gmp3_port: Optional[str] = "9090"
     gmp3_com_port: Optional[str] = "COM3"
+    qr_custom_domain: Optional[str] = "https://oses-baglar.vercel.app"
 
 class GMP3PaymentRequestSchema(BaseModel):
     amount: float = Field(gt=0)
@@ -485,6 +486,8 @@ def start_tunnel_process():
             tunnel_file = STATIC_DIR / "tunnel_url.json"
             tunnel_file.write_text(json.dumps(tunnel_info), encoding="utf-8")
 
+            threading.Thread(target=sync_to_vercel_redirector, args=(detected_url,), daemon=True).start()
+
             def _drain():
                 try:
                     for _ in proc.stderr:
@@ -503,6 +506,24 @@ def start_tunnel_process():
         tunnel_info["active"] = False
         tunnel_info["error"] = str(e)
         return {"status": "error", "message": str(e)}
+
+def sync_to_vercel_redirector(target_url: str):
+    try:
+        settings = database.get_store_settings()
+        vercel_url = settings.get("qr_custom_domain") or os.environ.get("VERCEL_URL") or "https://oses-baglar.vercel.app"
+        if vercel_url and vercel_url.strip():
+            url = vercel_url.strip().rstrip('/')
+            if not url.startswith('http'):
+                url = f"https://{url}"
+            req = urllib.request.Request(
+                f"{url}/api/update",
+                data=json.dumps({"target_url": target_url}).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=5) as response:
+                print(f"✅ Vercel akıllı yönlendirici güncellendi: {url} -> {target_url} (HTTP {response.status})")
+    except Exception as e:
+        print(f"⚠️ Vercel güncelleme uyarısı: {e}")
 
 def stop_tunnel_process():
     global tunnel_process, tunnel_info
@@ -553,6 +574,8 @@ async def save_tunnel_url(request: Request):
     tunnel_info["error"] = None
     tunnel_file = STATIC_DIR / "tunnel_url.json"
     tunnel_file.write_text(json.dumps(tunnel_info), encoding="utf-8")
+    if tunnel_info["url"]:
+        threading.Thread(target=sync_to_vercel_redirector, args=(tunnel_info["url"],), daemon=True).start()
     return {"status": "success", "data": tunnel_info}
 
 @app.post("/api/tunnel-start")
