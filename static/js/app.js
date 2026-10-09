@@ -22,13 +22,21 @@ class POSApp {
     this.pendingProduct = null;
     this.selectedOptionsState = {};
 
+    // Admin Security PIN state
+    this.isAdminUnlocked = false;
+    this.adminSessionExpiry = 0; // Timestamp for 30-minute admin session memory
+    this.pendingAdminAction = null;
+    this.currentPinInput = '';
+
     this.init();
   }
 
   async init() {
+    await this.fetchStoreSettings();
     await this.fetchCategories();
     await this.fetchProducts();
     await this.fetchOptions();
+    await this.fetchOpenOrders();
     this.renderCategoryTabs();
     this.renderProductGrid();
     this.renderCart();
@@ -141,10 +149,14 @@ class POSApp {
         ? `<span class="product-badge-opt" style="background:#DBEAFE; color:#1E40AF;">🍽️ Masa</span>`
         : `<span class="product-badge-opt" style="background:#D1FAE5; color:#065F46;">📦 Paket</span>`;
 
+      const iconHtml = p.image_url
+        ? `<div class="product-icon" style="background:transparent; padding:0; overflow:hidden;"><img src="${p.image_url}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;" /></div>`
+        : `<div class="product-icon">${p.image_symbol || '🌶️'}</div>`;
+
       html += `
         <div class="product-card" onclick="app.handleProductClick(${p.id})">
           <div class="product-header">
-            <div class="product-icon">${p.image_symbol || '🌶️'}</div>
+            ${iconHtml}
             ${modeBadge}
             ${hasOpts ? `<span class="product-badge-opt">Opsiyonlu</span>` : ''}
           </div>
@@ -632,7 +644,11 @@ class POSApp {
     }
   }
 
-  async deleteCustomer(phone) {
+  deleteCustomer(phone) {
+    this.requireAdminAuth(() => this._deleteCustomerInternal(phone), 'Müşteri Kaydı Silme');
+  }
+
+  async _deleteCustomerInternal(phone) {
     if (!confirm(`${phone} numaralı müşteriyi silmek istediğinizden emin misiniz?`)) return;
 
     try {
@@ -949,9 +965,11 @@ class POSApp {
 
   // --- PRODUCT & PRICE & OPTIONS MANAGEMENT ---
 
-  async openAdminProductsModal() {
-    this.openModal('modal-admin-products');
-    this.switchAdminTab('products');
+  openAdminProductsModal() {
+    this.requireAdminAuth(() => {
+      this.openModal('modal-admin-products');
+      this.switchAdminTab('products');
+    }, 'Ürün & Opsiyon Yönetimi');
   }
 
   switchAdminTab(tabName) {
@@ -987,9 +1005,13 @@ class POSApp {
       allProducts.forEach(p => {
         const isActive = p.is_active === 1;
         const priceMasaVal = (p.price_masa && p.price_masa > 0) ? p.price_masa : p.price;
+        const iconHtml = p.image_url
+          ? `<img src="${p.image_url}" style="width:30px; height:30px; border-radius:6px; object-fit:cover; vertical-align:middle; margin-right:6px;" />`
+          : `<span style="margin-right:6px; font-size:1.1rem;">${p.image_symbol || '🌶️'}</span>`;
+
         html += `
           <tr>
-            <td><strong>${p.image_symbol || '🌶️'} ${p.name}</strong></td>
+            <td><strong>${iconHtml} ${p.name}</strong></td>
             <td><small>${p.category_name}</small></td>
             <td><small style="color:#666;">${p.description || '-'}</small></td>
             <td>
@@ -1023,6 +1045,9 @@ class POSApp {
               </span>
             </td>
             <td style="text-align: center;">
+              <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 4px; background:#3B82F6; color:white;" onclick="app.openCropperForProduct(${p.id})">
+                📸 Görsel
+              </button>
               <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 4px;" onclick="app.openEditProductModal(${p.id})">
                 ✏️ Düzenle
               </button>
@@ -1190,7 +1215,11 @@ class POSApp {
     }
   }
 
-  async quickUpdatePrice(productId, newPrice, priceType = 'price') {
+  quickUpdatePrice(productId, newPrice, priceType = 'price') {
+    this.requireAdminAuth(() => this._quickUpdatePriceInternal(productId, newPrice, priceType), 'Fiyat Güncelleme');
+  }
+
+  async _quickUpdatePriceInternal(productId, newPrice, priceType = 'price') {
     const priceVal = parseFloat(newPrice);
     if (isNaN(priceVal) || priceVal <= 0) {
       alert('Görünür bir fiyat girin!');
@@ -1231,6 +1260,8 @@ class POSApp {
     document.getElementById('edit-p-desc').value = '';
     document.getElementById('edit-p-unit').value = 'Adet';
     document.getElementById('edit-p-icon').value = '🌯';
+    document.getElementById('edit-p-image-url').value = '';
+    document.getElementById('edit-p-image-preview').innerHTML = '🌯';
     document.getElementById('edit-p-has-options').checked = true;
     document.getElementById('edit-p-is-active').checked = true;
 
@@ -1251,11 +1282,24 @@ class POSApp {
     document.getElementById('edit-p-desc').value = product.description || '';
     document.getElementById('edit-p-unit').value = product.unit || 'Adet';
     document.getElementById('edit-p-icon').value = product.image_symbol || '🌶️';
+    
+    const imgUrl = product.image_url || '';
+    document.getElementById('edit-p-image-url').value = imgUrl;
+    document.getElementById('edit-p-image-preview').innerHTML = imgUrl
+      ? `<img src="${imgUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;" />`
+      : (product.image_symbol || '🌶️');
+
     document.getElementById('edit-p-has-options').checked = product.has_options === 1;
     document.getElementById('edit-p-is-active').checked = product.is_active === 1;
 
     this.populateCategorySelect(product.category_id);
     this.openModal('modal-edit-product');
+  }
+
+  clearEditProductImage() {
+    document.getElementById('edit-p-image-url').value = '';
+    const icon = document.getElementById('edit-p-icon').value || '🌯';
+    document.getElementById('edit-p-image-preview').innerHTML = icon;
   }
 
   populateCategorySelect(selectedCategoryId = null) {
@@ -1278,6 +1322,7 @@ class POSApp {
     const desc = document.getElementById('edit-p-desc').value.trim();
     const unit = document.getElementById('edit-p-unit').value.trim() || 'Adet';
     const icon = document.getElementById('edit-p-icon').value.trim() || '🌶️';
+    const imageUrl = document.getElementById('edit-p-image-url').value.trim() || null;
     const hasOptions = document.getElementById('edit-p-has-options').checked ? 1 : 0;
     const isActive = document.getElementById('edit-p-is-active').checked ? 1 : 0;
 
@@ -1294,6 +1339,7 @@ class POSApp {
       price_masa: priceMasa,
       unit: unit,
       image_symbol: icon,
+      image_url: imageUrl,
       is_active: isActive,
       has_options: hasOptions
     };
@@ -1342,7 +1388,11 @@ class POSApp {
     }
   }
 
-  async resetMenuToDefault() {
+  resetMenuToDefault() {
+    this.requireAdminAuth(() => this._resetMenuToDefaultInternal(), 'Menü Sıfırlama');
+  }
+
+  async _resetMenuToDefaultInternal() {
     if (!confirm('Tüm menü ve fiyatlar orijinal O Ses 25. Yıl fiyat listesine sıfırlanacak. Onaylıyor musunuz?')) return;
 
     try {
@@ -1376,6 +1426,63 @@ class POSApp {
 
     const totalAmount = Math.max(0, subtotal - discountAmount);
 
+    // If payment method is Credit Card and GMP-3 POS integration is enabled, send amount to inPOS m530
+    if (this.paymentMethod === 'KREDI_KART' && this.storeSettings && this.storeSettings.gmp3_enabled !== '0') {
+      this.triggerGmp3Payment(totalAmount, () => this._submitOrderInternal(subtotal, discountAmount, totalAmount));
+      return;
+    }
+
+    await this._submitOrderInternal(subtotal, discountAmount, totalAmount);
+  }
+
+  async triggerGmp3Payment(totalAmount, onSuccess) {
+    const amountEl = document.getElementById('gmp3-modal-amount');
+    const statusEl = document.getElementById('gmp3-modal-status');
+    const spinner = document.getElementById('gmp3-modal-spinner');
+
+    if (amountEl) amountEl.innerText = `₺${totalAmount.toFixed(2)}`;
+    if (statusEl) statusEl.innerText = 'inPOS m530 cihazına tutar aktarılıyor... Lütfen kartı cihaza okutun.';
+    if (spinner) spinner.style.display = 'block';
+
+    this.openModal('modal-gmp3-pos');
+
+    try {
+      const res = await fetch('/api/gmp3/send-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: totalAmount,
+          payment_type: 'KREDI_KART'
+        })
+      });
+      const data = await res.json();
+
+      if (data.status === 'success') {
+        if (statusEl) statusEl.innerText = '✅ Ödeme Başarılı! Sipariş tamamlanıyor...';
+        if (spinner) spinner.style.display = 'none';
+        this.showToast('inPOS m530 Ödemesi Alındı! 💳✅', 'success');
+        setTimeout(() => {
+          this.closeModal('modal-gmp3-pos');
+          onSuccess();
+        }, 600);
+      } else {
+        if (statusEl) statusEl.innerText = `❌ ${data.message || 'Ödeme Başarısız'}`;
+        if (spinner) spinner.style.display = 'none';
+        this.showToast(data.message || 'inPOS m530 ödeme hatası!', 'error');
+      }
+    } catch (err) {
+      if (statusEl) statusEl.innerText = '❌ inPOS m530 cihazına ulaşılamadı!';
+      if (spinner) spinner.style.display = 'none';
+      this.showToast('inPOS m530 iletişim hatası', 'error');
+    }
+  }
+
+  cancelGmp3Payment() {
+    this.closeModal('modal-gmp3-pos');
+    this.showToast('inPOS m530 ödeme işlemi iptal edildi.', 'info');
+  }
+
+  async _submitOrderInternal(subtotal, discountAmount, totalAmount) {
     const orderPayload = {
       customer_phone: this.activeCustomer ? this.activeCustomer.phone : null,
       customer_name: this.activeCustomer ? this.activeCustomer.name : 'Tezgah / Gel-Al Müşterisi',
@@ -1429,12 +1536,215 @@ class POSApp {
 
   // --- 80mm Thermal Receipt Generator ---
 
+  async printDraftReceipt() {
+    if (!this.cart || this.cart.length === 0) {
+      this.showToast('Yazdırılacak ürün sepetinizde yok!', 'error');
+      return;
+    }
+
+    const subtotal = this.cart.reduce((sum, item) => sum + item.totalPrice, 0);
+    let discountAmount = 0;
+    if (this.discount.type === 'PERCENT') discountAmount = (subtotal * this.discount.value) / 100;
+    else if (this.discount.type === 'TL') discountAmount = Math.min(subtotal, this.discount.value);
+    else if (this.discount.type === 'IKRAM') discountAmount = subtotal;
+
+    const totalAmount = Math.max(0, subtotal - discountAmount);
+
+    const orderPayload = {
+      customer_phone: this.activeCustomer ? this.activeCustomer.phone : null,
+      customer_name: this.activeCustomer ? this.activeCustomer.name : (this.orderType === 'MASA' ? 'Açık Masa Adisyonu' : 'Tezgah / Gel-Al Müşterisi'),
+      customer_address: this.activeCustomer ? this.activeCustomer.address : '',
+      source: 'KASA',
+      order_type: this.orderType,
+      subtotal: subtotal,
+      discount_amount: discountAmount,
+      discount_type: this.discount.type,
+      total_amount: totalAmount,
+      payment_method: 'ÖDEME BEKLİYOR',
+      order_status: 'BEKLIYOR',
+      note: 'YEMEK ÖNCESİ ARA ADİSYON (ÖDEMESİZ)',
+      items: this.cart.map(item => ({
+        product_id: item.productId,
+        product_name: item.productName,
+        unit_price: item.unitPrice,
+        quantity: item.quantity,
+        options_summary: item.optionsSummary,
+        total_price: item.totalPrice
+      }))
+    };
+
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderPayload)
+      });
+      const createdOrder = await res.json();
+
+      this.printReceipt(createdOrder);
+      this.showToast(`Masa Siparişi #${createdOrder.order_number} açıldı ve Mutfak Fişi basıldı! 📄🖨️`, 'success');
+
+      this.cart = [];
+      this.discount = { type: 'NONE', value: 0 };
+      this.renderCart();
+      this.fetchOpenOrders();
+
+    } catch (err) {
+      this.showToast('Mutfak fişi oluşturulurken hata!', 'error');
+    }
+  }
+
+  // --- AÇIK MASALAR VE BEKLEYEN ADİSYONLAR YÖNETİMİ ---
+
+  async fetchOpenOrders() {
+    try {
+      const res = await fetch('/api/orders/open');
+      const orders = await res.json();
+      const badgeCount = document.getElementById('open-orders-count-badge');
+      if (badgeCount) badgeCount.innerText = orders ? orders.length : 0;
+      this.renderMiniOpenTables(orders);
+      return orders;
+    } catch (err) {
+      console.error('Açık adisyonlar yükleme hatası:', err);
+      return [];
+    }
+  }
+
+  renderMiniOpenTables(orders) {
+    const miniContainer = document.getElementById('mini-open-tables-container');
+    if (!miniContainer) return;
+
+    if (!orders || orders.length === 0) {
+      miniContainer.innerHTML = `
+        <div style="font-size: 0.75rem; color: #94A3B8; text-align: center; padding: 4px 0;">
+          Açık masa bulunmuyor (Tümü Kapalı)
+        </div>
+      `;
+      return;
+    }
+
+    const miniList = orders.slice(0, 3);
+    let html = '';
+
+    miniList.forEach(o => {
+      const tableName = o.customer_name || `Masa #${o.id}`;
+      html += `
+        <div style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px 8px; display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem;">
+          <div style="font-weight: 700; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${tableName}">
+            🍽️ ${tableName}
+          </div>
+          <div style="font-weight: 800; color: #4ADE80;">
+            ₺${o.total_amount.toFixed(2)}
+          </div>
+          <div style="display: flex; gap: 4px;">
+            <button type="button" style="background: #10B981; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; cursor: pointer;" onclick="app.checkoutOpenOrder(${o.id}, 'NAKIT', ${o.total_amount})" title="Nakit İle Kapat">💵</button>
+            <button type="button" style="background: #3B82F6; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; cursor: pointer;" onclick="app.checkoutOpenOrder(${o.id}, 'KREDI_KART', ${o.total_amount})" title="Kredi Kartı (inPOS m530)">💳</button>
+            <button type="button" style="background: #64748B; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; cursor: pointer;" onclick="app.reprintOrder(${o.id})" title="Fiş Yazdır">🖨️</button>
+          </div>
+        </div>
+      `;
+    });
+
+    if (orders.length > 3) {
+      html += `
+        <div style="text-align: center; font-size: 0.72rem; color: #F59E0B; cursor: pointer; font-weight: 700; margin-top: 2px;" onclick="app.openOpenOrdersModal()">
+          + ${orders.length - 3} masa daha var (Tümünü Göster) ➔
+        </div>
+      `;
+    }
+
+    miniContainer.innerHTML = html;
+  }
+
+  async openOpenOrdersModal() {
+    const orders = await this.fetchOpenOrders();
+    this.renderOpenOrdersList(orders);
+    this.openModal('modal-open-orders');
+  }
+
+  renderOpenOrdersList(orders) {
+    const container = document.getElementById('open-orders-list-container');
+    if (!container) return;
+
+    if (!orders || orders.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #94A3B8;">
+          <div style="font-size: 3rem; margin-bottom: 8px;">🍽️</div>
+          <div style="font-size: 1.1rem; font-weight: 700;">Açık masa veya bekleyen adisyon bulunmuyor.</div>
+        </div>
+      `;
+      return;
+    }
+
+    let html = '';
+    orders.forEach(o => {
+      let itemsListHtml = '';
+      o.items.forEach(item => {
+        itemsListHtml += `<div style="font-size: 0.82rem; color: #334155;">• ${item.quantity}x ${item.product_name} (${item.total_price.toFixed(2)} TL)</div>`;
+      });
+
+      const tableName = o.customer_name || `Masa #${o.id}`;
+
+      html += `
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px;">
+            <div>
+              <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">🍽️ ${tableName}</span>
+              <span style="font-size: 0.78rem; color: #64748B; margin-left: 8px;">(Sipariş No: ${o.order_number})</span>
+            </div>
+            <div style="font-weight: 800; font-size: 1.25rem; color: #D32F2F;">
+              ₺${o.total_amount.toFixed(2)}
+            </div>
+          </div>
+          <div>
+            ${itemsListHtml}
+          </div>
+          <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px;">
+            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="app.reprintOrder(${o.id})">🖨️ Fiş Yazdır</button>
+            <button class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem; background: #10B981;" onclick="app.checkoutOpenOrder(${o.id}, 'NAKIT', ${o.total_amount})">💵 Nakit İle Kapat</button>
+            <button class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem; background: #3B82F6;" onclick="app.checkoutOpenOrder(${o.id}, 'KREDI_KART', ${o.total_amount})">💳 Kredi Kartı (inPOS m530)</button>
+            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; color: #D97706;" onclick="app.checkoutOpenOrder(${o.id}, 'VERESIYE', ${o.total_amount})">📝 Veresiye Kapat</button>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  async checkoutOpenOrder(orderId, paymentMethod, totalAmount) {
+    if (paymentMethod === 'KREDI_KART' && this.storeSettings && this.storeSettings.gmp3_enabled !== '0') {
+      this.triggerGmp3Payment(totalAmount, () => this._checkoutOpenOrderInternal(orderId, paymentMethod));
+      return;
+    }
+    await this._checkoutOpenOrderInternal(orderId, paymentMethod);
+  }
+
+  async _checkoutOpenOrderInternal(orderId, paymentMethod) {
+    try {
+      const res = await fetch(`/api/orders/${orderId}/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_method: paymentMethod })
+      });
+      const order = await res.json();
+      this.showToast(`Masa Siparişi #${order.order_number} kapatıldı ve ödeme alındı! 💳✅`, 'success');
+      const orders = await this.fetchOpenOrders();
+      this.renderOpenOrdersList(orders);
+    } catch (err) {
+      this.showToast('Masa kapatılırken hata!', 'error');
+    }
+  }
+
   printReceipt(order) {
     const printArea = document.getElementById('receipt-print-area');
     if (!printArea) return;
 
     const dateFormatted = order.created_at || new Date().toLocaleString('tr-TR');
-    const paymentLabel = order.payment_method === 'NAKIT' ? 'NAKİT' : (order.payment_method === 'KREDI_KART' ? 'KREDİ KART' : 'VERESİYE / AÇIK HESAP');
+    let paymentLabel = order.payment_method;
+    if (order.payment_method === 'NAKIT') paymentLabel = 'NAKİT';
+    else if (order.payment_method === 'KREDI_KART') paymentLabel = 'KREDİ KART';
+    else if (order.payment_method === 'VERESIYE') paymentLabel = 'VERESİYE / AÇIK HESAP';
 
     let itemsHtml = '';
     order.items.forEach(item => {
@@ -1653,6 +1963,8 @@ class POSApp {
           if (badge) badge.style.display = 'none';
           this.lastPendingCount = 0;
         }
+
+        this.fetchOpenOrders();
       } catch (err) {
         // Silent catch
       }
@@ -1769,17 +2081,56 @@ class POSApp {
   }
 
   async openQRGeneratorModal() {
-    let qrUrl = `${window.location.protocol}//${window.location.host}/qr`;
+    let baseUrl = `${window.location.protocol}//${window.location.host}/qr`;
 
     try {
       const res = await fetch('/api/tunnel-url');
       const data = await res.json();
       if (data && data.url) {
-        qrUrl = data.url.endsWith('/qr') ? data.url : `${data.url}/qr`;
+        baseUrl = data.url.endsWith('/qr') ? data.url : `${data.url}/qr`;
       }
     } catch (e) { }
 
+    this.defaultQRBaseUrl = baseUrl;
+    const customDomainInput = document.getElementById('qr-custom-domain');
+    if (customDomainInput && !customDomainInput.value) {
+      // If user saved a custom domain in localStorage, populate it
+      const savedDomain = localStorage.getItem('oses_qr_domain');
+      if (savedDomain) customDomainInput.value = savedDomain;
+    }
+
+    this.updateQRGeneratorPreview();
+    this.openModal('modal-qr-generator');
+  }
+
+  getQRTargetUrl(tableName) {
+    const customDomainInput = document.getElementById('qr-custom-domain');
+    let base = customDomainInput && customDomainInput.value.trim() ? customDomainInput.value.trim() : this.defaultQRBaseUrl;
+    if (!base) base = `${window.location.protocol}//${window.location.host}/qr`;
+    
+    // Save custom domain if entered
+    if (customDomainInput && customDomainInput.value.trim()) {
+      localStorage.setItem('oses_qr_domain', customDomainInput.value.trim());
+    }
+
+    // Remove existing query params and trailing slashes
+    base = base.split('?')[0].replace(/\/+$/, '');
+
+    // Append path /qr if missing
+    if (!base.endsWith('/qr')) {
+      base = `${base}/qr`;
+    }
+
+    return `${base}?masa=${encodeURIComponent(tableName)}`;
+  }
+
+  updateQRGeneratorPreview() {
+    const tableSelect = document.getElementById('qr-table-select');
+    const selectedTable = tableSelect ? tableSelect.value : 'Masa1';
+    const qrUrl = this.getQRTargetUrl(selectedTable);
+
     this.activeQRUrl = qrUrl;
+    this.activeQRTableName = selectedTable;
 
     const imgContainer = document.getElementById('qr-code-img-container');
     const urlText = document.getElementById('qr-url-text');
@@ -1789,12 +2140,11 @@ class POSApp {
       const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
       imgContainer.innerHTML = `<img src="${qrApiUrl}" alt="QR Menü" style="width:200px; height:200px; border-radius:8px;" />`;
     }
-
-    this.openModal('modal-qr-generator');
   }
 
   printQRCodeSticker() {
-    const qrUrl = this.activeQRUrl || `${window.location.protocol}//${window.location.host}/qr`;
+    const tableName = this.activeQRTableName || 'Masa 1';
+    const qrUrl = this.activeQRUrl || `${window.location.protocol}//${window.location.host}/qr?masa=Masa1`;
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
 
     const printArea = document.getElementById('receipt-print-area');
@@ -1802,15 +2152,648 @@ class POSApp {
 
     printArea.innerHTML = `
       <div style="font-family: sans-serif; text-align: center; padding: 20px; width: 80mm; margin: 0 auto; border: 2px dashed #000;">
-        <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 4px;">🌶️ O SES ÇİĞKÖFTE</h2>
-        <p style="font-size: 0.85rem; font-weight: 700; margin-bottom: 10px;">📱 KAREKOD İLE MASADAN SİPARİŞ</p>
-        <img src="${qrApiUrl}" style="width: 180px; height: 180px; margin: 10px 0;" />
-        <p style="font-size: 0.8rem; margin-top: 8px;">Kameranız ile QR kodu okutarak hızlıca sipariş verebilirsiniz!</p>
-        <p style="font-size: 0.75rem; font-weight: 700; margin-top: 4px; word-break: break-all;">${qrUrl}</p>
+        <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 2px;">🌶️ O SES ÇİĞKÖFTE</h2>
+        <div style="font-size: 1.2rem; font-weight: 800; color: #D32F2F; margin: 6px 0; background: #F8FAFC; padding: 6px; border-radius: 8px;">
+          🪑 ${tableName.toUpperCase()}
+        </div>
+        <p style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">📱 KAREKOD İLE MASADAN SİPARİŞ</p>
+        <img src="${qrApiUrl}" style="width: 180px; height: 180px; margin: 8px 0;" />
+        <p style="font-size: 0.8rem; margin-top: 6px; font-weight: 600;">Kameranız ile QR kodu okutarak temassız sipariş verebilirsiniz!</p>
+        <p style="font-size: 0.72rem; font-weight: 700; margin-top: 4px; word-break: break-all;">${qrUrl}</p>
       </div>
     `;
 
     window.print();
+  }
+
+  printAllTableQRStickers() {
+    const tables = ['Masa1', 'Masa2', 'Masa3', 'Masa4', 'Masa5', 'Masa6', 'Masa7', 'Masa8', 'Masa9', 'Masa10', 'Tezgah'];
+    const printArea = document.getElementById('receipt-print-area');
+    if (!printArea) return;
+
+    let html = '';
+    tables.forEach(table => {
+      const qrUrl = this.getQRTargetUrl(table);
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
+      html += `
+        <div style="font-family: sans-serif; text-align: center; padding: 20px; width: 80mm; margin: 0 auto 20px auto; border: 2px dashed #000; page-break-after: always;">
+          <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 2px;">🌶️ O SES ÇİĞKÖFTE</h2>
+          <div style="font-size: 1.2rem; font-weight: 800; color: #D32F2F; margin: 6px 0; background: #F8FAFC; padding: 6px; border-radius: 8px;">
+            🪑 ${table.toUpperCase()}
+          </div>
+          <p style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">📱 KAREKOD İLE MASADAN SİPARİŞ</p>
+          <img src="${qrApiUrl}" style="width: 180px; height: 180px; margin: 8px 0;" />
+          <p style="font-size: 0.8rem; margin-top: 6px; font-weight: 600;">Kameranız ile QR kodu okutarak temassız sipariş verebilirsiniz!</p>
+          <p style="font-size: 0.72rem; font-weight: 700; margin-top: 4px; word-break: break-all;">${qrUrl}</p>
+        </div>
+      `;
+    });
+
+    printArea.innerHTML = html;
+    window.print();
+  }
+
+  toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+      } else if (document.documentElement.webkitRequestFullscreen) {
+        document.documentElement.webkitRequestFullscreen();
+      } else if (document.documentElement.msRequestFullscreen) {
+        document.documentElement.msRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+    }
+  }
+
+  resetToHome() {
+    this.activeCategory = 'ALL';
+    this.clearSelectedCustomer();
+    const input = document.getElementById('customer-phone-input');
+    if (input) input.value = '';
+    this.renderCategoryTabs();
+    this.renderProductGrid();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.showToast('Ana sayfaya dönüldü 🏠', 'info');
+  }
+
+  // --- ADMIN SECURITY & PIN PROTECTION SYSTEM ---
+
+  isAdminSessionActive() {
+    return Date.now() < this.adminSessionExpiry;
+  }
+
+  unlockAdminSession(minutes = 30) {
+    this.adminSessionExpiry = Date.now() + (minutes * 60 * 1000);
+    this.updateAdminSessionUI();
+  }
+
+  lockAdminSession() {
+    this.adminSessionExpiry = 0;
+    this.updateAdminSessionUI();
+    this.showToast('Yönetici oturumu kilitlendi 🔒', 'info');
+  }
+
+  toggleAdminSessionManual() {
+    if (this.isAdminSessionActive()) {
+      this.lockAdminSession();
+    } else {
+      this.requireAdminAuth(() => {
+        this.showToast('Yönetici oturumu açıldı (30 Dk yetkili) 🔓', 'success');
+      }, 'Yönetici Oturumu Açma');
+    }
+  }
+
+  updateAdminSessionUI() {
+    const badge = document.getElementById('admin-session-badge');
+    if (!badge) return;
+
+    if (this.isAdminSessionActive()) {
+      const remainingMins = Math.ceil((this.adminSessionExpiry - Date.now()) / 60000);
+      badge.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
+      badge.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+      badge.style.color = '#FFFFFF';
+      badge.innerHTML = `🔓 Yetkili (${remainingMins} dk)`;
+    } else {
+      badge.style.background = 'rgba(239, 68, 68, 0.25)';
+      badge.style.border = '1px solid rgba(239, 68, 68, 0.5)';
+      badge.style.color = '#FCA5A5';
+      badge.innerHTML = `🔒 Kilitli`;
+    }
+  }
+
+  requireAdminAuth(actionCallback, actionName = 'Yönetici Korumalı İşlem') {
+    if (this.isAdminSessionActive()) {
+      if (typeof actionCallback === 'function') actionCallback();
+      return;
+    }
+
+    this.pendingAdminAction = actionCallback;
+    this.currentPinInput = '';
+
+    const input = document.getElementById('pin-lock-input');
+    if (input) input.value = '';
+
+    const subtitleEl = document.getElementById('pin-modal-subtitle');
+    if (subtitleEl) {
+      subtitleEl.innerHTML = `Lütfen <strong>"${actionName}"</strong> işlemi için Yönetici Şifrenizi girin:`;
+    }
+
+    this.openModal('modal-pin-lock');
+
+    setTimeout(() => {
+      if (input) input.focus();
+    }, 150);
+  }
+
+  syncPinTextInput(val) {
+    this.currentPinInput = val;
+  }
+
+  appendPinDigit(digit) {
+    if (this.currentPinInput.length < 16) {
+      this.currentPinInput += digit;
+      const input = document.getElementById('pin-lock-input');
+      if (input) input.value = this.currentPinInput;
+    }
+  }
+
+  deletePinDigit() {
+    if (this.currentPinInput.length > 0) {
+      this.currentPinInput = this.currentPinInput.slice(0, -1);
+      const input = document.getElementById('pin-lock-input');
+      if (input) input.value = this.currentPinInput;
+    }
+  }
+
+  clearPinInput() {
+    this.currentPinInput = '';
+    const input = document.getElementById('pin-lock-input');
+    if (input) input.value = '';
+  }
+
+  async submitPinVerification() {
+    const input = document.getElementById('pin-lock-input');
+    const pin = input ? input.value : this.currentPinInput;
+
+    if (!pin) {
+      this.showToast('Lütfen şifrenizi girin.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: pin })
+      });
+      const data = await res.json();
+
+      if (data.status === 'success' && data.valid) {
+        this.unlockAdminSession(30);
+        this.closeModal('modal-pin-lock');
+        this.clearPinInput();
+        this.showToast('Yönetici oturumu açıldı! (30 Dakika Geçerli) 🔓', 'success');
+        if (typeof this.pendingAdminAction === 'function') {
+          const cb = this.pendingAdminAction;
+          this.pendingAdminAction = null;
+          cb();
+        }
+      } else {
+        this.showToast('Hatalı Yönetici Şifresi! 🔒', 'error');
+        this.clearPinInput();
+      }
+    } catch (err) {
+      this.showToast('Şifre doğrulama hatası', 'error');
+    }
+  }
+
+  openChangePinModal() {
+    const currInput = document.getElementById('pin-change-current');
+    const newInput = document.getElementById('pin-change-new');
+    const confirmInput = document.getElementById('pin-change-confirm');
+    if (currInput) currInput.value = '';
+    if (newInput) newInput.value = '';
+    if (confirmInput) confirmInput.value = '';
+    this.openModal('modal-change-pin');
+  }
+
+  async submitChangePin() {
+    const currentPin = document.getElementById('pin-change-current')?.value || '';
+    const newPin = document.getElementById('pin-change-new')?.value || '';
+    const confirmPin = document.getElementById('pin-change-confirm')?.value || '';
+
+    if (!currentPin) {
+      this.showToast('Lütfen mevcut şifrenizi girin.', 'error');
+      return;
+    }
+    if (!newPin || newPin.length < 4) {
+      this.showToast('Yeni şifre en az 4 karakter olmalıdır.', 'error');
+      return;
+    }
+    if (newPin !== confirmPin) {
+      this.showToast('Yeni şifreler uyuşmuyor!', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/change-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_pin: currentPin, new_pin: newPin })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        this.showToast('Yönetici şifreniz başarıyla güncellendi! 🔑', 'success');
+        this.closeModal('modal-change-pin');
+        this.fetchStoreSettings();
+      } else {
+        this.showToast(data.detail || data.message || 'Şifre değiştirilemedi!', 'error');
+      }
+    } catch (err) {
+      this.showToast('Şifre değiştirme sırasında hata oluştu.', 'error');
+    }
+  }
+
+  async resetAdminPinToDefault() {
+    if (!confirm('Yönetici şifreniz varsayılan şifreye sıfırlansın mı?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/reset-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        this.showToast('Yönetici şifresi varsayılana sıfırlandı! 🔄', 'success');
+        this.fetchStoreSettings();
+      } else {
+        this.showToast(data.detail || data.message || 'Şifre sıfırlanamadı!', 'error');
+      }
+    } catch (err) {
+      this.showToast('Şifre sıfırlama sırasında hata oluştu.', 'error');
+    }
+  }
+
+  // --- BRAND & STORE SETTINGS MANAGEMENT ---
+
+  async fetchStoreSettings() {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      this.storeSettings = data || {};
+      this.applyStoreSettings();
+    } catch (err) {
+      console.error('Ayarlar yükleme hatası:', err);
+    }
+  }
+
+  applyStoreSettings() {
+    if (!this.storeSettings) return;
+
+    const nameEl = document.getElementById('header-store-name');
+    const subEl = document.getElementById('header-store-subtitle');
+    const logoContainer = document.getElementById('header-brand-logo-container');
+
+    if (nameEl && this.storeSettings.store_name) {
+      nameEl.innerText = this.storeSettings.store_name;
+    }
+    if (subEl && this.storeSettings.store_subtitle) {
+      subEl.innerText = this.storeSettings.store_subtitle;
+    }
+    if (logoContainer) {
+      if (this.storeSettings.store_logo_url) {
+        logoContainer.innerHTML = `<img src="${this.storeSettings.store_logo_url}" style="height:38px; max-width:130px; object-fit:contain; border-radius:6px; vertical-align:middle;" />`;
+      } else {
+        logoContainer.innerHTML = '🌶️';
+      }
+    }
+  }
+
+  openStoreSettingsModal() {
+    this.requireAdminAuth(() => this._openStoreSettingsModalInternal(), 'Marka & Logo Ayarları');
+  }
+
+  toggleGmp3SettingsUI(val) {
+    const ipBox = document.getElementById('gmp3-ip-box');
+    const serialBox = document.getElementById('gmp3-serial-box');
+    if (ipBox) ipBox.style.display = (val === 'IP') ? 'flex' : 'none';
+    if (serialBox) serialBox.style.display = (val === 'SERIAL') ? 'block' : 'none';
+  }
+
+  _openStoreSettingsModalInternal() {
+    const nameInput = document.getElementById('setting-store-name');
+    const subInput = document.getElementById('setting-store-subtitle');
+    const previewBox = document.getElementById('setting-logo-preview-box');
+
+    const connTypeSelect = document.getElementById('setting-gmp3-conn-type');
+    const ipInput = document.getElementById('setting-gmp3-ip');
+    const portInput = document.getElementById('setting-gmp3-port');
+    const comInput = document.getElementById('setting-gmp3-com');
+
+    if (nameInput) nameInput.value = this.storeSettings.store_name || 'O SES ÇİĞKÖFTE';
+    if (subInput) subInput.value = this.storeSettings.store_subtitle || 'HIZLI KASA & ADİSYON POS';
+
+    if (connTypeSelect) connTypeSelect.value = this.storeSettings.gmp3_connection_type || 'SIMULATION';
+    if (ipInput) ipInput.value = this.storeSettings.gmp3_ip || '192.168.1.100';
+    if (portInput) portInput.value = this.storeSettings.gmp3_port || '9090';
+    if (comInput) comInput.value = this.storeSettings.gmp3_com_port || 'COM3';
+
+    this.toggleGmp3SettingsUI(this.storeSettings.gmp3_connection_type || 'SIMULATION');
+
+    if (previewBox) {
+      if (this.storeSettings.store_logo_url) {
+        previewBox.innerHTML = `<img src="${this.storeSettings.store_logo_url}" style="max-width:100%; max-height:100%; object-fit:contain;" />`;
+      } else {
+        previewBox.innerHTML = '🌶️';
+      }
+    }
+
+    this.openModal('modal-store-settings');
+  }
+
+  async saveStoreSettings(notify = true) {
+    const storeName = document.getElementById('setting-store-name')?.value.trim() || 'O SES ÇİĞKÖFTE';
+    const storeSubtitle = document.getElementById('setting-store-subtitle')?.value.trim() || 'HIZLI KASA & ADİSYON POS';
+    const logoUrl = this.storeSettings.store_logo_url || '';
+
+    const connType = document.getElementById('setting-gmp3-conn-type')?.value || 'SIMULATION';
+    const ipVal = document.getElementById('setting-gmp3-ip')?.value.trim() || '192.168.1.100';
+    const portVal = document.getElementById('setting-gmp3-port')?.value.trim() || '9090';
+    const comVal = document.getElementById('setting-gmp3-com')?.value.trim() || 'COM3';
+
+    const payload = {
+      store_name: storeName,
+      store_subtitle: storeSubtitle,
+      store_logo_url: logoUrl,
+      gmp3_enabled: "1",
+      gmp3_connection_type: connType,
+      gmp3_ip: ipVal,
+      gmp3_port: portVal,
+      gmp3_com_port: comVal
+    };
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      this.storeSettings = data;
+      this.applyStoreSettings();
+      if (notify) {
+        this.showToast('Ayarlar ve inPOS m530 entegrasyonu kaydedildi!', 'success');
+        this.closeModal('modal-store-settings');
+      }
+    } catch (err) {
+      this.showToast('Ayarlar kaydedilemedi.', 'error');
+    }
+  }
+
+  removeStoreLogo() {
+    this.storeSettings.store_logo_url = '';
+    const previewBox = document.getElementById('setting-logo-preview-box');
+    if (previewBox) previewBox.innerHTML = '🌶️';
+  }
+
+  // --- INTERACTIVE CANVAS IMAGE CROPPER & STUDIO ENGINE ---
+
+  openCropperForLogo() {
+    this.cropperState = {
+      targetType: 'LOGO',
+      productId: null,
+      image: null,
+      scale: 1.0,
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 0,
+      isDragging: false,
+      dragStartX: 0,
+      dragStartY: 0
+    };
+    this.resetCropperUI('Marka Logosu Düzenleme Studio');
+    this.openModal('modal-image-cropper');
+  }
+
+  openCropperForProduct(productId) {
+    this.cropperState = {
+      targetType: 'PRODUCT',
+      productId: productId,
+      image: null,
+      scale: 1.0,
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 0,
+      isDragging: false,
+      dragStartX: 0,
+      dragStartY: 0
+    };
+    this.resetCropperUI('Ürün Fotoğrafı Düzenleme Studio');
+    this.openModal('modal-image-cropper');
+  }
+
+  openCropperForCurrentEditProduct() {
+    const pId = document.getElementById('edit-p-id')?.value;
+    this.cropperState = {
+      targetType: 'PRODUCT_FORM',
+      productId: pId ? parseInt(pId) : null,
+      image: null,
+      scale: 1.0,
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 0,
+      isDragging: false,
+      dragStartX: 0,
+      dragStartY: 0
+    };
+    this.resetCropperUI('Ürün Fotoğrafı Düzenleme Studio');
+    this.openModal('modal-image-cropper');
+  }
+
+  resetCropperUI(title) {
+    const titleEl = document.getElementById('cropper-modal-title');
+    if (titleEl) titleEl.innerText = `📸 ${title}`;
+
+    document.getElementById('cropper-workspace').style.display = 'none';
+    document.getElementById('cropper-placeholder').style.display = 'block';
+    document.getElementById('cropper-save-btn').disabled = true;
+    document.getElementById('cropper-file-input').value = '';
+  }
+
+  handleImageFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        this.cropperState.image = img;
+        this.cropperState.scale = 1.0;
+        this.cropperState.offsetX = 0;
+        this.cropperState.offsetY = 0;
+        this.cropperState.rotation = 0;
+
+        document.getElementById('cropper-workspace').style.display = 'block';
+        document.getElementById('cropper-placeholder').style.display = 'none';
+        document.getElementById('cropper-save-btn').disabled = false;
+        document.getElementById('cropper-zoom-slider').value = 1.0;
+        document.getElementById('cropper-zoom-text').innerText = '1.0x';
+
+        this.renderCropperCanvas();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  renderCropperCanvas() {
+    const canvas = document.getElementById('cropper-canvas');
+    if (!canvas || !this.cropperState || !this.cropperState.image) return;
+
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const img = this.cropperState.image;
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.save();
+
+    // Center translation
+    ctx.translate(width / 2 + this.cropperState.offsetX, height / 2 + this.cropperState.offsetY);
+    ctx.rotate((this.cropperState.rotation * Math.PI) / 180);
+    ctx.scale(this.cropperState.scale, this.cropperState.scale);
+
+    // Aspect ratio fit
+    const imgAspect = img.width / img.height;
+    let drawW = width;
+    let drawH = height;
+    if (imgAspect > 1) {
+      drawH = width / imgAspect;
+    } else {
+      drawW = height * imgAspect;
+    }
+
+    ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+    ctx.restore();
+  }
+
+  startCropperDrag(e) {
+    if (!this.cropperState || !this.cropperState.image) return;
+    this.cropperState.isDragging = true;
+    this.cropperState.dragStartX = e.clientX;
+    this.cropperState.dragStartY = e.clientY;
+    const box = document.getElementById('cropper-canvas-box');
+    if (box) box.style.cursor = 'grabbing';
+  }
+
+  doCropperDrag(e) {
+    if (!this.cropperState || !this.cropperState.isDragging) return;
+    const dx = e.clientX - this.cropperState.dragStartX;
+    const dy = e.clientY - this.cropperState.dragStartY;
+    this.cropperState.dragStartX = e.clientX;
+    this.cropperState.dragStartY = e.clientY;
+    this.cropperState.offsetX += dx;
+    this.cropperState.offsetY += dy;
+    this.renderCropperCanvas();
+  }
+
+  stopCropperDrag() {
+    if (this.cropperState) {
+      this.cropperState.isDragging = false;
+      const box = document.getElementById('cropper-canvas-box');
+      if (box) box.style.cursor = 'grab';
+    }
+  }
+
+  handleCropperWheel(e) {
+    e.preventDefault();
+    if (!this.cropperState || !this.cropperState.image) return;
+    const delta = e.deltaY < 0 ? 0.05 : -0.05;
+    let newZoom = Math.min(Math.max(this.cropperState.scale + delta, 0.2), 4.0);
+    this.updateCropperZoom(newZoom);
+    const slider = document.getElementById('cropper-zoom-slider');
+    if (slider) slider.value = newZoom;
+  }
+
+  updateCropperZoom(zoomVal) {
+    if (!this.cropperState) return;
+    this.cropperState.scale = parseFloat(zoomVal);
+    const textEl = document.getElementById('cropper-zoom-text');
+    if (textEl) textEl.innerText = `${parseFloat(zoomVal).toFixed(1)}x`;
+    this.renderCropperCanvas();
+  }
+
+  rotateCropperImage(deg) {
+    if (!this.cropperState) return;
+    this.cropperState.rotation = (this.cropperState.rotation + deg) % 360;
+    this.renderCropperCanvas();
+  }
+
+  async removeCropperTargetImage() {
+    if (!this.cropperState) return;
+
+    if (this.cropperState.targetType === 'LOGO') {
+      this.removeStoreLogo();
+      await this.saveStoreSettings(false);
+      this.showToast('Marka logosu kaldırıldı.', 'info');
+    } else if (this.cropperState.targetType === 'PRODUCT' && this.cropperState.productId) {
+      await fetch(`/api/products/${this.cropperState.productId}/image`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_url: '' })
+      });
+      await this.fetchProducts();
+      this.renderProductGrid();
+      await this.renderAdminProductsTable();
+      this.showToast('Ürün fotoğrafı silindi.', 'info');
+    } else if (this.cropperState.targetType === 'PRODUCT_FORM') {
+      this.clearEditProductImage();
+      this.showToast('Fotoğraf kaldırıldı.', 'info');
+    }
+
+    this.closeModal('modal-image-cropper');
+  }
+
+  async saveCroppedImage() {
+    const canvas = document.getElementById('cropper-canvas');
+    if (!canvas || !this.cropperState || !this.cropperState.image) return;
+
+    const dataUrl = canvas.toDataURL('image/png', 0.9);
+
+    try {
+      this.showToast('Görsel sunucuya işleniyor...', 'info');
+      const res = await fetch('/api/upload/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_data: dataUrl })
+      });
+      const data = await res.json();
+
+      if (data.status === 'success' && data.url) {
+        const uploadedUrl = data.url;
+
+        if (this.cropperState.targetType === 'LOGO') {
+          this.storeSettings.store_logo_url = uploadedUrl;
+          const box = document.getElementById('setting-logo-preview-box');
+          if (box) box.innerHTML = `<img src="${uploadedUrl}" style="max-width:100%; max-height:100%; object-fit:contain;" />`;
+          await this.saveStoreSettings(false);
+          this.showToast('Marka logosu güncellendi!', 'success');
+        } else if (this.cropperState.targetType === 'PRODUCT' && this.cropperState.productId) {
+          await fetch(`/api/products/${this.cropperState.productId}/image`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_url: uploadedUrl })
+          });
+          await this.fetchProducts();
+          this.renderProductGrid();
+          await this.renderAdminProductsTable();
+          this.showToast('Ürün fotoğrafı güncellendi!', 'success');
+        } else if (this.cropperState.targetType === 'PRODUCT_FORM') {
+          const input = document.getElementById('edit-p-image-url');
+          if (input) input.value = uploadedUrl;
+          const preview = document.getElementById('edit-p-image-preview');
+          if (preview) preview.innerHTML = `<img src="${uploadedUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;" />`;
+          this.showToast('Görsel forma eklendi!', 'success');
+        }
+
+        this.closeModal('modal-image-cropper');
+      } else {
+        this.showToast('Görsel yüklenemedi.', 'error');
+      }
+    } catch (err) {
+      this.showToast('Yükleme hatası oluştu.', 'error');
+    }
   }
 }
 

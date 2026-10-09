@@ -13,15 +13,25 @@ if [ -f "./cloudflared" ]; then
 fi
 
 echo "🚀 Cloudflare Ücretsiz HTTPS Tüneli Açılıyor (http://localhost:8000 -> HTTPS)..."
+rm -f tunnel.log
 $CMD tunnel --url http://localhost:8000 2>&1 | tee tunnel.log &
 
-sleep 4
-URL=$(grep -o "https://[a-zA-Z0-9-]*\.trycloudflare\.com" tunnel.log | tail -n 1)
+# Wait up to 15 seconds for valid trycloudflare URL
+URL=""
+for i in {1..15}; do
+    sleep 1
+    if [ -f "tunnel.log" ]; then
+        URL=$(grep -o "https://[a-zA-Z0-9-]*\.trycloudflare\.com" tunnel.log | grep -v "api\.trycloudflare\.com" | tail -n 1)
+        if [ -n "$URL" ]; then
+            break
+        fi
+    fi
+done
 
 if [ -n "$URL" ]; then
     echo "============================================================"
     echo "✅ Canlı HTTPS QR Menü Adresiniz Üretildi!"
-    echo "🔗 Bağlantı: $URL/qr"
+    echo "🔗 Karekod (QR) Linki: $URL/qr"
     echo "============================================================"
     curl -s -X POST http://localhost:8000/api/tunnel-url -H "Content-Type: application/json" -d "{\"url\":\"$URL\",\"active\":true}"
 
@@ -30,6 +40,8 @@ if [ -n "$URL" ]; then
         echo "🚀 Vercel Sabit QR Kod Yönlendirmesi Güncelleniyor..."
         curl -s -X POST "$VERCEL_URL/api/update" -H "Content-Type: application/json" -d "{\"target_url\":\"$URL\"}"
     fi
+else
+    echo "⚠️ Tünel adresi henüz bulunamadı, cloudflared çalışmaya devam ediyor..."
 fi
 
 wait

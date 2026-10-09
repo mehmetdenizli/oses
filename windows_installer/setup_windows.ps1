@@ -1,14 +1,9 @@
 # ==============================================================================
 # O Ses Cigkofte POS - Windows Otomatik Sistem Kurucu
 # ==============================================================================
-# Bu script Windows kasa bilgisayarında POS uygulamasının çalışabilmesi için
-# gerekli olan Python, Pip paketleri, Cloudflared tünel yazılımı ve Google Chrome
-# bağımlılıklarını kontrol eder, eksik olanları otomatik indirir ve kurar.
-# ==============================================================================
 
 $ErrorActionPreference = "Stop"
 
-# Windows Konsol Kod Sayfasını UTF-8 Yapma
 try {
     [Console]::InputEncoding = [System.Text.Encoding]::UTF8
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -93,7 +88,6 @@ if (-not $pythonPath) {
     Write-Step "Python Sessizce Kuruluyor (PATH'e ekleniyor)..."
     Start-Process -FilePath $tempInstaller -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1 Include_pip=1" -Wait
     
-    # Path degiskenini guncelleme
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
     
     Remove-Item $tempInstaller -ErrorAction SilentlyContinue
@@ -147,40 +141,8 @@ elseif (Test-Path $ChromePath2) { $ChromeExe = $ChromePath2 }
 if ($ChromeExe) {
     Write-Success "Google Chrome tespit edildi: $ChromeExe"
 } else {
-    Write-Warn "Google Chrome bulunamadi. Kiosk dokunmatik mod icin Chrome yuklenmesi onerilir."
+    Write-Warn "Google Chrome bulunamadi."
 }
-
-# Masaustune Kisayol Olusturma
-try {
-    $WScriptShell = New-Object -ComObject WScript.Shell
-    $DesktopPath = [System.Environment]::GetFolderPath("Desktop")
-    
-    # 1. POS Baslat Kisayolu
-    $ShortcutPath = Join-Path $DesktopPath "O Ses POS - Kasa Baslat.lnk"
-    $Shortcut = $WScriptShell.CreateShortcut($ShortcutPath)
-    $Shortcut.TargetPath = Join-Path $ProjectDir "run_windows.bat"
-    $Shortcut.WorkingDirectory = $ProjectDir
-    $Shortcut.Description = "O Ses Cigkofte POS & Adisyon Sunucusunu Baslatir"
-    $Shortcut.Save()
-    Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Kasa Baslat'"
-
-    # 2. Chrome Kiosk Kisayolu (Chrome Varsa)
-    if ($ChromeExe) {
-        $KioskShortcutPath = Join-Path $DesktopPath "O Ses POS - Kiosk Ekrani.lnk"
-        $KioskShortcut = $WScriptShell.CreateShortcut($KioskShortcutPath)
-        $KioskShortcut.TargetPath = $ChromeExe
-        $KioskShortcut.Arguments = "--kiosk http://localhost:8000 --kiosk-printing"
-        $KioskShortcut.Description = "POS Ekranini Dokunmatik Tam Ekran Modunda Acarak Fisleri Otomatik Basar"
-        $KioskShortcut.Save()
-        Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Kiosk Ekrani'"
-    }
-} catch {
-    Write-Warn "Masaustu kisayollari olusturulurken kucuk bir uyari alindi, ancak kurulum tamamlandi."
-}
-Write-Host ""
-
-# 7. Otomatik Arka Plan & Elektrik Kesintisi Otomatik Baslatma Yapilandirmasi
-Write-Step "6/6: Windows Acilisinda Otomatik Arka Plan Servis Ayarlari Yapilandiriliyor..."
 
 # Arka planda gizli calistirici VBScript olusturma
 $VbsScriptPath = Join-Path $ProjectDir "run_background_windows.vbs"
@@ -191,7 +153,48 @@ WshShell.Run chr(34) & "$ProjectDir\run_tunnel_windows.bat" & chr(34), 0
 Set WshShell = Nothing
 "@
 [System.IO.File]::WriteAllText($VbsScriptPath, $VbsContent)
-Write-Success "Gizli arka plan calistirici olusturuldu (run_background_windows.vbs)."
+
+# Masaustune Kisayol Olusturma
+try {
+    $WScriptShell = New-Object -ComObject WScript.Shell
+    $DesktopPath = [System.Environment]::GetFolderPath("Desktop")
+    
+    # 1. Arka Plan Baslat (Gizli Sunucu)
+    $BgShortcutPath = Join-Path $DesktopPath "O Ses POS - Arka Planda Baslat.lnk"
+    $BgShortcut = $WScriptShell.CreateShortcut($BgShortcutPath)
+    $BgShortcut.TargetPath = "wscript.exe"
+    $BgShortcut.Arguments = "`"$VbsScriptPath`""
+    $BgShortcut.WorkingDirectory = $ProjectDir
+    $BgShortcut.Description = "Siyah komut penceresi acilmadan POS sunucusunu arka planda gizlice calistirir."
+    $BgShortcut.Save()
+    Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Arka Planda Baslat'"
+
+    # 2. Chrome Pencereli App Modu (Ekran Kaplar, Pencere Butonlari Var)
+    if ($ChromeExe) {
+        $AppShortcutPath = Join-Path $DesktopPath "O Ses POS - Kasa Ekrani (Pencereli App).lnk"
+        $AppShortcut = $WScriptShell.CreateShortcut($AppShortcutPath)
+        $AppShortcut.TargetPath = $ChromeExe
+        $AppShortcut.Arguments = "--app=http://localhost:8000 --start-maximized --kiosk-printing"
+        $AppShortcut.Description = "POS Ekranini masaustu uygulamasi gibi acar (Kucult / Kapat butonlari aktif)."
+        $AppShortcut.Save()
+        Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Kasa Ekrani (Pencereli App)'"
+
+        # 3. Kiosk Tam Ekran Modu (Kasa Kilitli Mod)
+        $KioskShortcutPath = Join-Path $DesktopPath "O Ses POS - Kasa Ekrani (Tam Ekran Kiosk).lnk"
+        $KioskShortcut = $WScriptShell.CreateShortcut($KioskShortcutPath)
+        $KioskShortcut.TargetPath = $ChromeExe
+        $KioskShortcut.Arguments = "--kiosk http://localhost:8000 --kiosk-printing"
+        $KioskShortcut.Description = "Kasa dokunmatik ekranlar icin kilitli tam ekran modunda acar."
+        $KioskShortcut.Save()
+        Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Kasa Ekrani (Tam Ekran Kiosk)'"
+    }
+} catch {
+    Write-Warn "Masaustu kisayollari olusturulurken kucuk bir uyari alindi."
+}
+Write-Host ""
+
+# 7. Otomatik Arka Plan & Elektrik Kesintisi Otomatik Baslatma Yapilandirmasi
+Write-Step "6/6: Windows Acilisinda Otomatik Arka Plan Servis Ayarlari Yapilandiriliyor..."
 
 # Startup (Baslangic) Klasorune Kisayol Ekleme
 try {
@@ -203,10 +206,8 @@ try {
     $StartupShortcut.WorkingDirectory = $ProjectDir
     $StartupShortcut.Description = "O Ses POS Sunucusu ve Tuneli Otomatik Baslatici"
     $StartupShortcut.Save()
-    Write-Success "Windows Baslangic Klasorune (Startup) eklendi: Elektrik geldiginde PC acilinca otomatik baslayacak!"
-} catch {
-    Write-Warn "Baslangic klasorune kisayol eklenirken bir hata olustu."
-}
+    Write-Success "Windows Baslangic Klasorune (Startup) eklendi!"
+} catch {}
 
 # Windows Gorev Zamanlayicisi (Task Scheduler) Kaydi
 if ($isAdmin) {
@@ -216,9 +217,7 @@ if ($isAdmin) {
         $schCmd = "schtasks /Create /TN `"$TaskName`" /TR `"wscript.exe `\`"$VbsScriptPath`\`"`" /SC ONLOGON /RL HIGHEST /F"
         Invoke-Expression $schCmd | Out-Null
         Write-Success "Windows Gorev Zamanlayicisina ($TaskName) eklendi!"
-    } catch {
-        Write-Warn "Gorev zamanlayicisi kaydi olusturulamadi."
-    }
+    } catch {}
 }
 
 Write-Host ""
@@ -226,15 +225,9 @@ Write-Host "====================================================================
 Write-Host "   TEBRIKLER! O SES POS SISTEMI VE OTOMATIK BASLATMA AYARLANDI!       " -ForegroundColor Yellow
 Write-Host "======================================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "[+] ELEKTRIK KESINTISI & ACILIS UYARISI:" -ForegroundColor Cyan
-Write-Host "   - Elektrik gelip bilgisayar acildiginda POS Sunucusu ve QR Tuneli" -ForegroundColor White
-Write-Host "     arka planda HICBIR PENCERE ACILMADAN otomatik olarak calisacaktir." -ForegroundColor White
-Write-Host "   - Bilgisayarin elektrik geldiginde kendi kendine acilmasi icin" -ForegroundColor White
-Write-Host "     BIOS menusunden 'AC Power Recovery -> Power On' secenegini acmaniz yeterlidir." -ForegroundColor Yellow
-Write-Host ""
 
-$response = Read-Host "Simdi POS uygulamasini baslatmak ister misiniz? (E/H)"
+$response = Read-Host "Simdi POS uygulamasini arka planda baslatmak ister misiniz? (E/H)"
 if ($response -eq 'E' -or $response -eq 'e') {
-    Write-Host "[+] POS Sunucusu ve Tunel Arka Planda Baslatiliyor..." -ForegroundColor Green
+    Write-Host "[+] POS Sunucusu ve Tunel Arka Planda Gizlice Baslatiliyor..." -ForegroundColor Green
     Start-Process -FilePath "wscript.exe" -ArgumentList "`"$VbsScriptPath`"" -WorkingDirectory $ProjectDir
 }

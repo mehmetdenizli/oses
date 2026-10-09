@@ -17,6 +17,10 @@ __pycache__/
 *.log
 tunnel.log
 
+# Uploads
+static/uploads/*
+!static/uploads/.gitkeep
+
 # Binaries & Tooling
 cloudflared
 cloudflared.exe

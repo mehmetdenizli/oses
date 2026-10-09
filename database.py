@@ -64,7 +64,45 @@ def init_db():
     except Exception:
         pass
 
+    try:
+        cursor.execute("ALTER TABLE products ADD COLUMN image_url TEXT")
+    except Exception:
+        pass
+
     cursor.execute("UPDATE products SET price_masa = price WHERE price_masa IS NULL OR price_masa = 0.0")
+
+    # Store Settings (İşletme Adı, Logo URL, Alt Başlık vb.)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS store_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    );
+    """)
+
+    # Seed default store settings if empty
+    cursor.execute("SELECT COUNT(*) FROM store_settings")
+    if cursor.fetchone()[0] == 0:
+        default_settings = [
+            ("store_name", "O SES ÇİĞKÖFTE"),
+            ("store_subtitle", "HIZLI KASA & ADİSYON POS"),
+            ("store_logo_url", ""),
+            ("admin_pin", "oses1234"),
+            ("gmp3_enabled", "1"),
+            ("gmp3_connection_type", "SIMULATION"),
+            ("gmp3_ip", "192.168.1.100"),
+            ("gmp3_port", "9090"),
+            ("gmp3_com_port", "COM3")
+        ]
+        for k, v in default_settings:
+            cursor.execute("INSERT OR IGNORE INTO store_settings (key, value) VALUES (?, ?)", (k, v))
+    else:
+        cursor.execute("INSERT OR IGNORE INTO store_settings (key, value) VALUES ('admin_pin', 'oses1234')")
+        cursor.execute("UPDATE store_settings SET value = 'oses1234' WHERE key = 'admin_pin' AND value = '1234'")
+        cursor.execute("INSERT OR IGNORE INTO store_settings (key, value) VALUES ('gmp3_enabled', '1')")
+        cursor.execute("INSERT OR IGNORE INTO store_settings (key, value) VALUES ('gmp3_connection_type', 'SIMULATION')")
+        cursor.execute("INSERT OR IGNORE INTO store_settings (key, value) VALUES ('gmp3_ip', '192.168.1.100')")
+        cursor.execute("INSERT OR IGNORE INTO store_settings (key, value) VALUES ('gmp3_port', '9090')")
+        cursor.execute("INSERT OR IGNORE INTO store_settings (key, value) VALUES ('gmp3_com_port', 'COM3')")
 
     # Opsiyon Grupları (Garnitür ücretsiz limiti ve aşım ücreti kuralı)
     cursor.execute("""
@@ -126,6 +164,8 @@ def init_db():
     except Exception:
         pass
 
+    cursor.execute("UPDATE categories SET name = 'Çiğ Köfteler' WHERE name = 'Dürümler & Paketler'")
+
     # Sipariş Kalemleri
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS order_items (
@@ -161,7 +201,7 @@ def seed_default_data(conn):
     cursor = conn.cursor()
 
     categories_data = [
-        ("Dürümler & Paketler", "🌯", 1),
+        ("Çiğ Köfteler", "🌯", 1),
         ("İçecekler", "🥤", 2),
         ("Tatlılar", "🍰", 3),
         ("Ekstralar & Soslar", "🌶️", 4)
@@ -180,7 +220,7 @@ def reset_products_to_menu(conn):
     cursor.execute("DELETE FROM categories")
 
     categories_data = [
-        ("Dürümler & Paketler", "🌯", 1),
+        ("Çiğ Köfteler", "🌯", 1),
         ("İçecekler", "🥤", 2),
         ("Tatlılar", "🍰", 3),
         ("Ekstralar & Soslar", "🌶️", 4)
@@ -193,18 +233,18 @@ def reset_products_to_menu(conn):
     cat_map = {row["name"]: row["id"] for row in cursor.fetchall()}
 
     products_data = [
-        # Dürümler & Paketler (Paket Fiyatı, Masa Fiyatı)
-        (cat_map["Dürümler & Paketler"], "DÜRÜM", "100 gr çiğ köfte, lavaş, yeşillik", 140.0, 150.0, "Adet", "🌯", 1, 1),
-        (cat_map["Dürümler & Paketler"], "ULTRA DÜRÜM", "120 gr çiğ köfte, lavaş, yeşillik", 150.0, 160.0, "Adet", "🌯", 1, 1),
-        (cat_map["Dürümler & Paketler"], "MEGA DÜRÜM", "150 gr çiğ köfte, lavaş, yeşillik", 190.0, 200.0, "Adet", "🌯", 1, 1),
-        (cat_map["Dürümler & Paketler"], "DUBLE DÜRÜM", "180 gr çiğ köfte, lavaş, yeşillik", 230.0, 250.0, "Adet", "🌯", 1, 1),
-        (cat_map["Dürümler & Paketler"], "ÇİĞ DİLİM", "100 gr çiğ köfte, lavaş, yeşillik", 160.0, 170.0, "Adet", "🫓", 1, 1),
-        (cat_map["Dürümler & Paketler"], "DORİTOSLU ÇİĞ DİLİM", "100 gr çiğ köfte, Doritos, lavaş, yeşillik", 180.0, 190.0, "Adet", "🌮", 1, 1),
-        (cat_map["Dürümler & Paketler"], "KÜÇÜK PAKET", "300 gr çiğ köfte, 2 adet lavaş, yeşillik, 1 acı sos, 1 çiğköfte sos", 270.0, 290.0, "Paket", "🥗", 1, 1),
-        (cat_map["Dürümler & Paketler"], "ORTA PAKET", "500 gr çiğ köfte, 4 adet lavaş, yeşillik, 2 acı sos, 2 çiğköfte sos", 440.0, 470.0, "Paket", "🥗", 1, 1),
-        (cat_map["Dürümler & Paketler"], "AVANTAJ PAKET", "600 gr çiğ köfte, 4 adet lavaş, yeşillik, 1 acı sos, 1 çiğköfte sos", 500.0, 530.0, "Paket", "🍱", 1, 1),
-        (cat_map["Dürümler & Paketler"], "BÜYÜK PAKET", "750 gr çiğ köfte, 6 adet lavaş, yeşillik, 3 acı sos, 3 çiğköfte sos", 600.0, 640.0, "Paket", "🍱", 1, 1),
-        (cat_map["Dürümler & Paketler"], "AİLE BOYU PAKET", "1 kg çiğ köfte, 8 adet lavaş, yeşillik, 3 acı sos, 3 çiğköfte sos", 750.0, 800.0, "Paket", "👑", 1, 1),
+        # Çiğ Köfteler (Paket Fiyatı, Masa Fiyatı)
+        (cat_map["Çiğ Köfteler"], "DÜRÜM", "100 gr çiğ köfte, lavaş, yeşillik", 140.0, 150.0, "Adet", "🌯", 1, 1),
+        (cat_map["Çiğ Köfteler"], "ULTRA DÜRÜM", "120 gr çiğ köfte, lavaş, yeşillik", 150.0, 160.0, "Adet", "🌯", 1, 1),
+        (cat_map["Çiğ Köfteler"], "MEGA DÜRÜM", "150 gr çiğ köfte, lavaş, yeşillik", 190.0, 200.0, "Adet", "🌯", 1, 1),
+        (cat_map["Çiğ Köfteler"], "DUBLE DÜRÜM", "180 gr çiğ köfte, lavaş, yeşillik", 230.0, 250.0, "Adet", "🌯", 1, 1),
+        (cat_map["Çiğ Köfteler"], "ÇİĞ DİLİM", "100 gr çiğ köfte, lavaş, yeşillik", 160.0, 170.0, "Adet", "🫓", 1, 1),
+        (cat_map["Çiğ Köfteler"], "DORİTOSLU ÇİĞ DİLİM", "100 gr çiğ köfte, Doritos, lavaş, yeşillik", 180.0, 190.0, "Adet", "🌮", 1, 1),
+        (cat_map["Çiğ Köfteler"], "KÜÇÜK PAKET", "300 gr çiğ köfte, 2 adet lavaş, yeşillik, 1 acı sos, 1 çiğköfte sos", 270.0, 290.0, "Paket", "🥗", 1, 1),
+        (cat_map["Çiğ Köfteler"], "ORTA PAKET", "500 gr çiğ köfte, 4 adet lavaş, yeşillik, 2 acı sos, 2 çiğköfte sos", 440.0, 470.0, "Paket", "🥗", 1, 1),
+        (cat_map["Çiğ Köfteler"], "AVANTAJ PAKET", "600 gr çiğ köfte, 4 adet lavaş, yeşillik, 1 acı sos, 1 çiğköfte sos", 500.0, 530.0, "Paket", "🍱", 1, 1),
+        (cat_map["Çiğ Köfteler"], "BÜYÜK PAKET", "750 gr çiğ köfte, 6 adet lavaş, yeşillik, 3 acı sos, 3 çiğköfte sos", 600.0, 640.0, "Paket", "🍱", 1, 1),
+        (cat_map["Çiğ Köfteler"], "AİLE BOYU PAKET", "1 kg çiğ köfte, 8 adet lavaş, yeşillik, 3 acı sos, 3 çiğköfte sos", 750.0, 800.0, "Paket", "👑", 1, 1),
 
         # İçecekler
         (cat_map["İçecekler"], "Su", "Doğal kaynak suyu 0.5L", 20.0, 20.0, "Şişe", "💧", 1, 0),
@@ -607,7 +647,12 @@ def create_order(order_data: dict):
                 VALUES (?, ?, ?, ?, 1, ?, ?)
             """, (phone, c_name, c_address, note or "", now_str, now_str))
 
-    order_status = 'BEKLIYOR' if source == 'KAREKOD_MUSTERI' else 'TAMAMLANDI'
+    if order_data.get("order_status"):
+        order_status = order_data.get("order_status")
+    elif payment_method == 'ÖDEME BEKLİYOR' or source == 'KAREKOD_MUSTERI':
+        order_status = 'BEKLIYOR'
+    else:
+        order_status = 'TAMAMLANDI'
 
     cursor.execute("""
         INSERT INTO orders (
@@ -793,6 +838,35 @@ def get_pending_qr_orders():
     conn.close()
     return res
 
+def get_open_orders():
+    conn = get_db_connection()
+    orders = conn.execute("""
+        SELECT * FROM orders 
+        WHERE order_status = 'BEKLIYOR'
+        ORDER BY id ASC
+    """).fetchall()
+
+    res = []
+    for o in orders:
+        od = dict(o)
+        items = conn.execute("SELECT * FROM order_items WHERE order_id = ?", (od["id"],)).fetchall()
+        od["items"] = [dict(i) for i in items]
+        res.append(od)
+
+    conn.close()
+    return res
+
+def checkout_open_order(order_id: int, payment_method: str = "NAKIT"):
+    conn = get_db_connection()
+    conn.execute("""
+        UPDATE orders 
+        SET order_status = 'TAMAMLANDI', payment_status = 'ODENDI', payment_method = ?, is_printed = 1
+        WHERE id = ?
+    """, (payment_method, order_id))
+    conn.commit()
+    conn.close()
+    return get_order_details(order_id)
+
 def approve_qr_order(order_id: int):
     conn = get_db_connection()
     conn.execute("UPDATE orders SET order_status = 'TAMAMLANDI', is_printed = 1 WHERE id = ?", (order_id,))
@@ -804,3 +878,34 @@ def reject_qr_order(order_id: int):
     conn.execute("UPDATE orders SET order_status = 'IPTAL' WHERE id = ?", (order_id,))
     conn.close()
     return {"status": "success", "message": f"Sipariş #{order_id} reddedildi."}
+
+def update_product_image(product_id: int, image_url: str):
+    conn = get_db_connection()
+    conn.execute("UPDATE products SET image_url = ? WHERE id = ?", (image_url, product_id))
+    conn.close()
+    return get_product_by_id(product_id)
+
+def get_store_settings():
+    conn = get_db_connection()
+    rows = conn.execute("SELECT key, value FROM store_settings").fetchall()
+    conn.close()
+    res = {
+        "store_name": "O SES ÇİĞKÖFTE",
+        "store_subtitle": "HIZLI KASA & ADİSYON POS",
+        "store_logo_url": "",
+        "admin_pin": "oses1234"
+    }
+    for r in rows:
+        res[r["key"]] = r["value"]
+    return res
+
+def update_store_settings(settings: dict):
+    conn = get_db_connection()
+    for k, v in settings.items():
+        if v is not None:
+            conn.execute("""
+                INSERT INTO store_settings (key, value) VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """, (str(k), str(v)))
+    conn.close()
+    return get_store_settings()

@@ -395,9 +395,9 @@
 
   <!-- Header -->
   <header class="qr-header">
-    <div class="qr-brand">
-      <span class="logo-icon">🌶️</span>
-      <h1>O SES <span>ÇİĞKÖFTE</span></h1>
+    <div class="qr-brand" id="qr-brand-container">
+      <span class="logo-icon" id="qr-brand-icon">🌶️</span>
+      <h1 id="qr-brand-title">O SES <span>ÇİĞKÖFTE</span></h1>
     </div>
     <div class="table-badge" id="qr-table-tag">📱 Mobil Karekod Sipariş Menüsü</div>
   </header>
@@ -518,6 +518,7 @@
         }
 
         await Promise.all([
+          this.fetchStoreSettings(),
           this.fetchCategories(),
           this.fetchProducts(),
           this.fetchOptions()
@@ -525,6 +526,27 @@
 
         this.renderCategoryPills();
         this.renderMenu();
+      }
+
+      async fetchStoreSettings() {
+        try {
+          const res = await fetch('/api/settings');
+          const settings = await res.json();
+          if (settings) {
+            const titleEl = document.getElementById('qr-brand-title');
+            const iconEl = document.getElementById('qr-brand-icon');
+            if (titleEl && settings.store_name) {
+              titleEl.innerHTML = settings.store_name.toUpperCase();
+            }
+            if (iconEl) {
+              if (settings.store_logo_url) {
+                iconEl.innerHTML = `<img src="${settings.store_logo_url}" style="height:36px; max-width:120px; object-fit:contain; vertical-align:middle;" />`;
+              } else {
+                iconEl.innerHTML = '🌶️';
+              }
+            }
+          }
+        } catch (e) { }
       }
 
       async fetchCategories() {
@@ -585,11 +607,15 @@
 
         let html = '';
         for (const [catName, prods] of Object.entries(groups)) {
-          html += `<div class="category-title">🌶️ ${catName}</div>`;
+          html += `<div class="category-title">📌 ${catName}</div>`;
           prods.forEach(p => {
+            const iconHtml = p.image_url 
+              ? `<div class="p-icon-box" style="padding:0; overflow:hidden; background:transparent;"><img src="${p.image_url}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;" /></div>`
+              : `<div class="p-icon-box">${p.image_symbol || '🌯'}</div>`;
+
             html += `
               <div class="product-card">
-                <div class="p-icon-box">${p.image_symbol || '🌯'}</div>
+                ${iconHtml}
                 <div class="p-info">
                   <div class="p-title">${p.name}</div>
                   <div class="p-desc">${p.description || ''}</div>

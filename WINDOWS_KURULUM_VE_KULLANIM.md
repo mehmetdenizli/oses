@@ -46,15 +46,24 @@ Kasa bilgisayarı her açıldığında (elektrik kesintisinden sonra veya sabah 
 
 ---
 
-### 🖥️ 2. Dokunmatik Tam Ekran (Chrome Kiosk Modu)
-Kasa ekranının tarayıcı çubukları olmadan tıpkı yerel bir masaüstü uygulaması gibi açılması ve fişin diyalog sormadan anında basılması için:
+### 🖥️ 2. Dokunmatik Tam Ekran & Pencere Modu Seçenekleri
 
-1. Masaüstündeki **Google Chrome** kısayoluna sağ tıklayıp **Özellikler** deyin.
-2. **Hedef (Target)** alanının sonuna bir boşluk bırakarak şu parametreleri ekleyin:
-   ```cmd
-   "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk http://localhost:8000 --kiosk-printing
-   ```
-3. Tamam'a basın. Artık Chrome kısayoluna tıklandığında ekran dokunmatik POS uygulaması olarak tam ekran açılır ve yazdırma butonları diyalog beklemeden **anında 80mm fiş basar**.
+Windows'ta uygulamanın tam ekran kullanımı için 2 seçeneğiniz vardır:
+
+#### A) Önerilen: Masaüstü Uygulama Modu (Pencereli App Modu)
+Kasa ekranı adres çubuğu ve sekmeler olmadan tıpkı yerel bir masaüstü programı gibi açılır. Ekranı tam kaplar ancak sağ üstte **Küçült (`_`)** ve **Kapat (`X`)** butonları aktif kalır:
+- Kısayol Hedefi:
+  ```cmd
+  "C:\Program Files\Google\Chrome\Application\chrome.exe" --app=http://localhost:8000 --start-maximized --kiosk-printing
+  ```
+
+#### B) Kilitli Kiosk Modu (Tam Ekran Kasa Modu)
+Ekran tamamen kilitlenir, Başlat çubuğu ve pencere butonları gizlenir (Garson/Kasa müdahalesini engellemek için idealdir):
+- Kısayol Hedefi:
+  ```cmd
+  "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk http://localhost:8000 --kiosk-printing
+  ```
+- **Tam Ekrandan Çıkma / Değiştirme:** POS ekranının üst barında bulunan **`⛶ Tam Ekran`** butonuna tıklayarak veya klavyeden `F11` tuşuna basarak tam ekran modunu istediğiniz an açıp kapatabilirsiniz.
 
 ---
 

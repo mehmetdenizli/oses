@@ -112,7 +112,7 @@ Kayıtlı tüm müşterilerin bilgileri ve sipariş geçmişi istatistikleri dur
 #### 2. `categories` (Menü Kategorileri)
 Menünün ana gruplarını tutar.
 - `id`: Kategori ID'si.
-- `name`: Kategori adı (*Dürümler & Paketler, İçecekler, Tatlılar, Ekstralar & Soslar*).
+- `name`: Kategori adı (*Çiğ Köfteler, İçecekler, Tatlılar, Ekstralar & Soslar*).
 - `icon`: Kategori emojisi/simgesi.
 - `sort_order`: Sıralama önceliği.
 

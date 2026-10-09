@@ -1,6 +1,57 @@
 # O Ses Çiğköfte POS & Adisyon Sistemi - Geliştirme Günlüğü (Devlog / Changelog)
 
-Bu dosya, projedeki tüm geliştirme aşamalarını, veritabanı güncellemelerini, hata düzeltmelerini ve yeni eklenen özellikleri kayıt altında tutar.
+Bu dosya, projedeki tüm geliştirme aşamalarını, veritabanı güncellemelerini, mimari kararları, POS donanım entegrasyonlarını ve yeni eklenen özellikleri kayıt altında tutar.
+
+---
+
+## [1.1.0] - 2026-10-09
+
+### 🚀 Major Versiyon Güncellemesi: inPOS m530 Entegrasyonu, Akıllı Oturum, Kağıt İsrafı Engelleme & Tam Windows Otomasyonu
+
+#### 💳 1. Mikrosaray inPOS m530 YN ÖKC Entegrasyonu (`gmp3_driver.py`, `main.py`, `app.js`)
+- **GMP-3 Protokol Sürücüsü (`gmp3_driver.py`):**
+  - Gelir İdaresi Başkanlığı (GİB) onaylı GMP-3 ortak ÖKC entegrasyon protokolü yazıldı.
+  - 3 Farklı Bağlantı Modu desteklenmektedir:
+    1. **`IP` (Ethernet / Wi-Fi Ağ Bağlantısı):** TCP Socket (`port: 9090`) üzerinden bilgisayardan inPOS m530 cihazına tutar aktarır.
+    2. **`SERIAL` (USB / RS232 Kablo):** COM port üzerinden haberleşir (`pyserial` kütüphanesi).
+    3. **`SIMULATION` (Test / Çevrimdışı Mod):** Fiziksel POS cihazı bağlı değilken geliştirme ve test yapmak için otomatik onay simülasyonu sunar.
+- **Otomatik Tutar Aktarımı:** Kasadan `💳 Kredi Kartı (inPOS m530)` butonuna basıldığı an tutar (örn: ₺150.00) kablosuz/kablolu ağ üzerinden inPOS m530 ekranına düşer; kasiyer elle tutar girmek zorunda kalmaz.
+- **REST API Endpoint'leri:**
+  - `POST /api/gmp3/send-payment`: Tutar aktarım komutunu tetikler.
+  - `GET /api/gmp3/status`: inPOS m530 bağlantı ve cihaz durumunu döndürür.
+
+#### 🛡️ 2. Yönetici PIN Güvenlik Mimarisi & Akıllı Oturum Sistemi (`database.py`, `app.js`, `index.html`)
+- **Güvenli Varsayılan PIN:** Varsayılan yönetici şifresi **`oses1234`** olarak belirlendi.
+- **Açık Metin Şifre Temizliği:** Arayüzdeki tüm modal başlıkları, butonlar, alt yazılar ve placeholder'lardaki açık metin PIN gösterimleri kaldırıldı.
+- **Tek Kullanımlık PIN Doğrulama (`POST /api/verify-pin`):** Yönetici işlemleri backend tarafında doğrulama sorgusu ile korundu.
+- **30 Dakikalık Akıllı Yönetici Oturumu (Admin Session Memory):**
+  - Yönetici şifresini bir kez doğru girdiğinde sistem 30 dakika boyunca oturumu açık tutar.
+  - Ürün fiyatı güncelleme, marka/logo değiştirme, müşteri silme veya menü sıfırlama işlemlerinde **her seferinde tekrar şifre girme yorgunluğu önlendi.**
+  - Üst çubuğa canlı **`🔓 Yetkili (30 dk)`** rozet butonu eklendi. Butona basıldığında oturum anında **`🔒 Kilitli`** durumuna geçer.
+
+#### 🍽️ 3. Masa / Salon Adisyon Modu & Kağıt İsrafını Önleyen Çift Fiş İptali (`database.py`, `app.js`, `index.html`)
+- **Mutfak / Ara Fiş (Ödemesiz) Butonu (`📄 Mutfak / Ara Fiş`):**
+  - Müşteri yemeden önce adisyon yazdırıldığında SPENTA SPR-160P termal yazıcıdan mutfak/ara adisyon fişi basılır.
+  - Sipariş `order_status = 'BEKLIYOR'` ve `payment_method = 'ÖDEME BEKLİYOR'` olarak kaydedilir.
+- **Canlı Açık Masalar Paneli (`renderMiniOpenTables`):**
+  - Sağ panelde Live Adisyon (Sepet) kutusunun tam üzerine konumlandırıldı.
+  - En son açılan 3 açık masayı canlı tutarlarıyla ve hızlı ödeme butonlarıyla (`💵`, `💳`, `🖨️`) gösterir; `Tümünü Gör 🔍` butonu ile modal açılır.
+- **Kağıt İsrafını Önleyen Kapatma Mimarisi (`_checkoutOpenOrderInternal`):**
+  - Açık masadan ödeme alındığında adisyon `TAMAMLANDI` durumuna geçer ancak **ikinci kez gereksiz termal fiş basımı YAPILMAZ**.
+  - Kredi kartı ödemelerinde inPOS m530 cihazı banka POS slipini kendisi basar.
+
+#### 🏷️ 4. Çiftli Fiyatlandırma Mimarisi (Gel-Al & Masa Fiyatı) (`database.py`, `main.py`, `app.js`)
+- Her ürün için 2 ayrı fiyat tutulur: `price` (Gel-Al Fiyatı) ve `price_masa` (Masa / Salon Fiyatı).
+- `PATCH /api/products/{id}/price` endpoint'i ile hızlı fiyat güncelleme sağlandı.
+
+#### 🪟 5. Windows 10/11 Tam Otomatik Kurulum Sihirbazı (`windows_installer/`)
+- Cross-Platform Mimari: Mac ve Windows işletim sistemlerinde tam uyumlu.
+- `windows_installer/run_installer.bat` ve `setup_windows.ps1` scripti ile:
+  1. Python 3.9+ var mı denetler, yoksa internetten **Python 3.11** indirip silent kurulum yapar.
+  2. Sanal ortamı (`venv`) oluşturur ve `requirements.txt` bağımlılıklarını (`FastAPI`, `Uvicorn`, `Pydantic`, `PySerial`) yükler.
+  3. `cloudflared.exe` tünel dosyasını indirir.
+  4. Elektrik kesintisi ve açılış koruması için Windows Başlangıç Klasörüne (`shell:startup`) ve Görev Zamanlayıcısına (`Task Scheduler`) otomatik servis kaydı ekler.
+  5. Masaüstüne Pencereli App Modu ve Kiosk Tam Ekran Modu kısayollarını oluşturur.
 
 ---
 
@@ -64,29 +115,13 @@ Bu dosya, projedeki tüm geliştirme aşamalarını, veritabanı güncellemeleri
   - **Kanal / Sipariş Kaynağı Dağılımı:** KASA, TRENDYOL, GETİR, MİGROS bazında sipariş adedi ve ciro payı.
   - **İndirim & İkram Analizi:** Uygulanan indirim türleri dökümü (%10, %20, Özel TL İndirimi, 🎁 İkramlar).
 
-- **Kapsamlı Raporlama ve Analiz Paneli (`index.html`, `app.js`, `main.py`):**
-  - **Tarih Filtreleri:** "📅 Bugün (Günlük Özeti)", "🗓️ Bu Ay (Aylık Rapor)" ve "📆 Özel Tarih Aralığı Seçimi" butonları ile dinamik raporlama.
-  - **Sekmeli Analiz Görünümü:** "📦 En Çok Satan Ürünler Tablosu", "🛵 Sipariş Kaynakları", "🎁 İndirim Detayı" ve "📋 Adisyon Geçmişi (Tek Tıkla Fiş Basımı)".
-  - REST API Endpoint'leri: `GET /api/stats/analytics` eklendi.
-
 ---
 
 ## [1.2.0] - 2026-10-02
 
 ### 🌶️ Dinamik Opsiyon, Ücretli Ekstralar ve Ücretsiz Garnitür Limiti Kural Yapısı
-- **Veritabanı Mimarisi Genişletildi (`database.py`):**
-  - `option_groups` ve `option_items` tabloları eklendi.
-- **Canlı Opsiyon Fiyat Farkı & Ücretsiz Garnitür Limiti Motoru (`app.js`):**
-  - 4 çeşitten fazla garnitür seçildiğinde limiti aşan her ilave garnitür için tanımlanan ücret (örn. +₺10.00) otomatik hesaplanır.
-  - Çift Lavaş (+₺15.00), Bol Nar Ekşisi (+₺15.00), Doritos (+₺20.00) gibi tercihler anında sepete ve birim fiyata eklenir.
-
----
-
-## [1.1.0] - 2026-10-02
-
-### 🍱 O Ses 25. Yıl Fiyat Listesi Güncellemesi & ⚙️ Ürün & Fiyat Yönetimi Paneli
-- **Resmi Menü Fiyatları Güncellendi (`database.py`):**
-  - Görseldeki orijinal O Ses 25. Yıl fiyat listesi veritabanına işlendi.
+- `option_groups` ve `option_items` tabloları eklendi.
+- 4 çeşitten fazla garnitür seçildiğinde limiti aşan her ilave garnitür için tanımlanan ücret (örn. +₺10.00) otomatik hesaplanır.
 
 ---
 

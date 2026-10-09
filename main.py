@@ -7,6 +7,7 @@ from typing import List, Optional
 from pathlib import Path
 from contextlib import asynccontextmanager
 import database
+from gmp3_driver import GMP3Driver
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -42,8 +43,39 @@ class ProductCreateUpdateSchema(BaseModel):
     price_masa: Optional[float] = None
     unit: Optional[str] = "Adet"
     image_symbol: Optional[str] = "🌶️"
+    image_url: Optional[str] = None
     is_active: Optional[int] = 1
     has_options: Optional[int] = 1
+
+class ImageUploadSchema(BaseModel):
+    image_data: str # Base64 data URL or raw string
+    filename: Optional[str] = "upload.png"
+
+class ProductImageUpdateSchema(BaseModel):
+    image_url: Optional[str] = ""
+
+class StoreSettingsSchema(BaseModel):
+    store_name: Optional[str] = "O SES ÇİĞKÖFTE"
+    store_subtitle: Optional[str] = "HIZLI KASA & ADİSYON POS"
+    store_logo_url: Optional[str] = ""
+    admin_pin: Optional[str] = "oses1234"
+    gmp3_enabled: Optional[str] = "1"
+    gmp3_connection_type: Optional[str] = "SIMULATION"
+    gmp3_ip: Optional[str] = "192.168.1.100"
+    gmp3_port: Optional[str] = "9090"
+    gmp3_com_port: Optional[str] = "COM3"
+
+class GMP3PaymentRequestSchema(BaseModel):
+    amount: float = Field(gt=0)
+    order_id: Optional[str] = ""
+    payment_type: Optional[str] = "KREDI_KART"
+
+class VerifyPinSchema(BaseModel):
+    pin: str
+
+class ChangePinSchema(BaseModel):
+    current_pin: str
+    new_pin: str
 
 class PriceUpdateSchema(BaseModel):
     price: float = Field(gt=0)
@@ -97,8 +129,12 @@ class OrderCreateSchema(BaseModel):
     discount_type: Optional[str] = "NONE"  # 'NONE', 'TL', 'PERCENT', 'IKRAM'
     total_amount: float
     payment_method: str  # 'NAKIT', 'KREDI_KART', 'VERESIYE'
+    order_status: Optional[str] = None
     note: Optional[str] = ""
     items: List[OrderItemSchema]
+
+class CheckoutOpenOrderSchema(BaseModel):
+    payment_method: str = "NAKIT"
 
 class ExternalOrderSchema(BaseModel):
     source: str  # 'TRENDYOL', 'GETIR', 'MIGROS'
@@ -248,6 +284,14 @@ def list_orders(
 def get_pending_qr_approvals():
     return database.get_pending_qr_orders()
 
+@app.get("/api/orders/open")
+def get_open_orders_route():
+    return database.get_open_orders()
+
+@app.post("/api/orders/{order_id}/checkout")
+def checkout_open_order_route(order_id: int, payload: CheckoutOpenOrderSchema):
+    return database.checkout_open_order(order_id, payload.payment_method)
+
 @app.post("/api/orders/{order_id}/approve")
 def approve_qr_order(order_id: int):
     return database.approve_qr_order(order_id)
@@ -341,6 +385,102 @@ async def save_tunnel_url(request: Request):
     import json
     tunnel_file.write_text(json.dumps(data), encoding="utf-8")
     return {"status": "success", "data": data}
+
+# --- Store Settings & Image Upload Endpoints ---
+
+@app.get("/api/settings")
+def get_settings():
+    return database.get_store_settings()
+
+@app.post("/api/settings")
+def update_settings(payload: StoreSettingsSchema):
+    return database.update_store_settings(payload.model_dump())
+
+@app.post("/api/verify-pin")
+def verify_admin_pin(payload: VerifyPinSchema):
+    settings = database.get_store_settings()
+    stored_pin = settings.get("admin_pin", "oses1234")
+    if payload.pin.strip() == stored_pin.strip():
+        return {"status": "success", "valid": True}
+    return {"status": "error", "valid": False, "message": "Geçersiz Yönetici PIN Kodu!"}
+
+@app.post("/api/change-pin")
+def change_admin_pin(payload: ChangePinSchema):
+    settings = database.get_store_settings()
+    stored_pin = settings.get("admin_pin", "oses1234")
+    if payload.current_pin.strip() != stored_pin.strip():
+        raise HTTPException(status_code=400, detail="Mevcut yönetici şifreniz hatalı!")
+    
+    if not payload.new_pin.strip() or len(payload.new_pin.strip()) < 4:
+        raise HTTPException(status_code=400, detail="Yeni şifre en az 4 karakter olmalıdır!")
+
+    database.update_store_settings({"admin_pin": payload.new_pin.strip()})
+    return {"status": "success", "message": "Yönetici şifreniz başarıyla değiştirildi!"}
+
+@app.post("/api/reset-pin")
+def reset_admin_pin():
+    database.update_store_settings({"admin_pin": "oses1234"})
+    return {"status": "success", "message": "Yönetici şifresi varsayılan 'oses1234' olarak sıfırlandı!"}
+
+# --- inPOS m530 & GMP-3 Payment Terminal Endpoints ---
+
+@app.post("/api/gmp3/send-payment")
+def send_gmp3_payment(payload: GMP3PaymentRequestSchema):
+    settings = database.get_store_settings()
+    conn_type = settings.get("gmp3_connection_type", "SIMULATION")
+    ip = settings.get("gmp3_ip", "192.168.1.100")
+    port = settings.get("gmp3_port", "9090")
+    com_port = settings.get("gmp3_com_port", "COM3")
+
+    driver = GMP3Driver(connection_type=conn_type, ip=ip, port=port, com_port=com_port)
+    res = driver.send_payment(payload.amount, payload.order_id, payload.payment_type)
+    return res
+
+@app.get("/api/gmp3/status")
+def get_gmp3_status():
+    settings = database.get_store_settings()
+    conn_type = settings.get("gmp3_connection_type", "SIMULATION")
+    ip = settings.get("gmp3_ip", "192.168.1.100")
+    port = settings.get("gmp3_port", "9090")
+    com_port = settings.get("gmp3_com_port", "COM3")
+
+    driver = GMP3Driver(connection_type=conn_type, ip=ip, port=port, com_port=com_port)
+    return driver.check_status()
+
+@app.patch("/api/products/{product_id}/image")
+def update_product_image_route(product_id: int, payload: ProductImageUpdateSchema):
+    return database.update_product_image(product_id, payload.image_url)
+
+@app.post("/api/upload/image")
+def upload_image(payload: ImageUploadSchema):
+    try:
+        import base64
+        import uuid
+
+        uploads_dir = STATIC_DIR / "uploads"
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+
+        img_data = payload.image_data
+        file_ext = ".png"
+
+        if "," in img_data:
+            header, img_data = img_data.split(",", 1)
+            if "jpeg" in header or "jpg" in header:
+                file_ext = ".jpg"
+            elif "webp" in header:
+                file_ext = ".webp"
+
+        binary_data = base64.b64decode(img_data)
+        filename = f"img_{uuid.uuid4().hex[:10]}{file_ext}"
+        filepath = uploads_dir / filename
+
+        with open(filepath, "wb") as f:
+            f.write(binary_data)
+
+        url = f"/static/uploads/{filename}"
+        return {"status": "success", "url": url}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Görsel yükleme hatası: {str(e)}")
 
 @app.get("/qr")
 def serve_qr_menu():

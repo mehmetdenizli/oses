@@ -1222,3 +1222,20 @@ body {
     font-weight: bold;
   }
 }
+
+.btn-numpad {
+  background: #F1F5F9;
+  color: #1E293B;
+  border: 1px solid #CBD5E1;
+  border-radius: 12px;
+  padding: 14px 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.btn-numpad:active {
+  transform: scale(0.93);
+  background: #CBD5E1;
+}
