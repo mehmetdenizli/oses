@@ -2317,9 +2317,18 @@ class POSApp {
     if (imgContainer) {
       const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=15&data=${encodeURIComponent(qrUrl)}`;
       imgContainer.innerHTML = `
-        <img src="${qrApiUrl}" alt="QR Menü" style="width:210px; height:210px; border-radius:8px; display:block; margin:0 auto;" />
-        <div style="font-size:0.75rem; color:#059669; font-weight:700; margin-top:8px;">
-          👉 Kamerayı tutunca çıkan <u>linke / baloncuga</u> dokunun (Google'da aratmayın)
+        <img src="${qrApiUrl}" alt="QR Menü" style="width:200px; height:200px; border-radius:8px; display:block; margin:0 auto;" />
+        <div style="margin-top:10px; background:#F8FAFC; border:1px solid #CBD5E1; border-radius:10px; padding:10px; text-align:left; font-size:0.77rem; line-height:1.45; color:#334155;">
+          <div style="font-weight:800; color:#0F172A; margin-bottom:4px; display:flex; align-items:center; gap:5px;">
+            <span>📱</span> <span>MÜŞTERİ KULLANIM & KOPYALAMA REHBERİ:</span>
+          </div>
+          <div style="margin-bottom:3px;">
+            • <strong>Normal Kamera:</strong> Kamerayı karekoda tutun, ekranda çıkan <u>linke / baloncuga</u> dokunun.
+          </div>
+          <div style="color:#92400E; background:#FEF3C7; padding:5px 8px; border-radius:6px; margin-top:4px; font-weight:600;">
+            ⚠️ <strong>Xiaomi veya "Metin (T) / Ara" çıkan telefonlarda:</strong><br>
+            Alttaki <strong>"Metni Kopyala"</strong> butonuna basın, Chrome veya Safari tarayıcınıza yapıştırarak menüyü hemen açın. <em>(Google'da aratmayın)</em>
+          </div>
         </div>
       `;
     }
@@ -2340,9 +2349,14 @@ class POSApp {
           🪑 ${tableName.toUpperCase()}
         </div>
         <p style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">📱 KAREKOD İLE MASADAN SİPARİŞ</p>
-        <img src="${qrApiUrl}" style="width: 180px; height: 180px; margin: 8px 0;" />
-        <p style="font-size: 0.8rem; margin-top: 6px; font-weight: 700; color: #1E293B;">Kameranızı tutun ve çıkan linke / baloncuga dokunun!</p>
-        <p style="font-size: 0.72rem; font-weight: 700; margin-top: 4px; word-break: break-all; color: #D32F2F;">${qrUrl}</p>
+        <img src="${qrApiUrl}" style="width: 170px; height: 170px; margin: 6px 0;" />
+        <p style="font-size: 0.72rem; font-weight: 700; margin-top: 2px; word-break: break-all; color: #D32F2F;">${qrUrl}</p>
+        
+        <div style="margin-top: 8px; border-top: 1px dashed #64748B; padding-top: 6px; font-size: 0.74rem; color: #1E293B; line-height: 1.35; text-align: left; background: #F8FAFC; padding: 6px 8px; border-radius: 6px;">
+          <p style="font-weight: 800; color: #0F172A; text-align: center; margin-bottom: 3px;">📲 NASIL SİPARİŞ VERİLİR?</p>
+          <p>1. Kameranızı karekoda tutun ve çıkan <strong>linke</strong> dokunun.</p>
+          <p>2. Ekranda "Metin (T)" çıkarsa <strong>"Metni Kopyala"</strong> deyip tarayıcınıza (Chrome/Safari) yapıştırın.</p>
+        </div>
       </div>
     `;
 
@@ -2365,9 +2379,14 @@ class POSApp {
             🪑 ${table.toUpperCase()}
           </div>
           <p style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">📱 KAREKOD İLE MASADAN SİPARİŞ</p>
-          <img src="${qrApiUrl}" style="width: 180px; height: 180px; margin: 8px 0;" />
-          <p style="font-size: 0.8rem; margin-top: 6px; font-weight: 700; color: #1E293B;">Kameranızı tutun ve çıkan linke / baloncuga dokunun!</p>
-          <p style="font-size: 0.72rem; font-weight: 700; margin-top: 4px; word-break: break-all; color: #D32F2F;">${qrUrl}</p>
+          <img src="${qrApiUrl}" style="width: 170px; height: 170px; margin: 6px 0;" />
+          <p style="font-size: 0.72rem; font-weight: 700; margin-top: 2px; word-break: break-all; color: #D32F2F;">${qrUrl}</p>
+          
+          <div style="margin-top: 8px; border-top: 1px dashed #64748B; padding-top: 6px; font-size: 0.74rem; color: #1E293B; line-height: 1.35; text-align: left; background: #F8FAFC; padding: 6px 8px; border-radius: 6px;">
+            <p style="font-weight: 800; color: #0F172A; text-align: center; margin-bottom: 3px;">📲 NASIL SİPARİŞ VERİLİR?</p>
+            <p>1. Kameranızı karekoda tutun ve çıkan <strong>linke</strong> dokunun.</p>
+            <p>2. Ekranda "Metin (T)" çıkarsa <strong>"Metni Kopyala"</strong> deyip tarayıcınıza (Chrome/Safari) yapıştırın.</p>
+          </div>
         </div>
       `;
     });
