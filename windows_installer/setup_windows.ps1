@@ -198,6 +198,7 @@ Write-Step "6/6: Windows Acilisinda Otomatik Arka Plan Servis Ayarlari Yapilandi
 
 # Startup (Baslangic) Klasorune Kisayol Ekleme
 try {
+    $WScriptShell = New-Object -ComObject WScript.Shell
     $StartupFolder = [System.Environment]::GetFolderPath("Startup")
     $StartupShortcutPath = Join-Path $StartupFolder "OsesPOS_AutoStart.lnk"
     $StartupShortcut = $WScriptShell.CreateShortcut($StartupShortcutPath)
@@ -207,7 +208,9 @@ try {
     $StartupShortcut.Description = "O Ses POS Sunucusu ve Tuneli Otomatik Baslatici"
     $StartupShortcut.Save()
     Write-Success "Windows Baslangic Klasorune (Startup) eklendi!"
-} catch {}
+} catch {
+    Write-Warn "Startup klasorune kisayol eklenirken bir uyari olustu: $_"
+}
 
 # Windows Gorev Zamanlayicisi (Task Scheduler) Kaydi
 if ($isAdmin) {
