@@ -2111,12 +2111,32 @@ class POSApp {
 
     await this.fetchTunnelStatus();
 
+    if (this.tunnelState.active && this.tunnelState.url) {
+      this.syncActiveTunnelToVercel(this.tunnelState.url);
+    }
+
     const modeSelect = document.getElementById('qr-mode-select');
     if (modeSelect) modeSelect.value = this.qrMode;
 
     this.renderQRConnectionStatus();
     this.updateQRGeneratorPreview();
     this.openModal('modal-qr-generator');
+  }
+
+  async syncActiveTunnelToVercel(tunnelUrl) {
+    const customDomain = localStorage.getItem('oses_qr_domain') || (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.vercel.app';
+    if (!customDomain || !tunnelUrl) return;
+    try {
+      const cleanDomain = customDomain.split('?')[0].replace(/\/+$/, '');
+      await fetch(`${cleanDomain}/api/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_url: tunnelUrl })
+      });
+      console.log('✅ Vercel yönlendirici senkronize edildi:', tunnelUrl);
+    } catch (e) {
+      console.warn('Vercel senkronizasyon uyarısı:', e);
+    }
   }
 
   async fetchTunnelStatus() {
@@ -2147,6 +2167,7 @@ class POSApp {
         this.tunnelState.active = true;
         this.tunnelState.url = data.data.url;
         this.tunnelState.loading = false;
+        await this.syncActiveTunnelToVercel(this.tunnelState.url);
         this.showToast('✅ Canlı tünel hazır! Vercel ve karekod güncellendi.', 'success');
       } else {
         throw new Error(data.detail || data.message || 'Tünel başlatılamadı');
