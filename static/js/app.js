@@ -1780,10 +1780,13 @@ class POSApp {
     const hasCustomer = order.customer_name && order.customer_name !== 'Tezgah / Gel-Al Müşterisi';
     const orderTypeLabel = (order.order_type === 'MASA' || order.order_type === 'SALON') ? '🍽️ MASA (Salon)' : '📦 PAKET (Gel-Al)';
 
+    const storeTitle = (this.storeSettings && this.storeSettings.store_name) ? this.storeSettings.store_name : 'OSES BAĞLAR';
+    const storeSubtitle = (this.storeSettings && this.storeSettings.store_subtitle) ? this.storeSettings.store_subtitle : 'LEZZETİN ADRESİNE HOŞGELDİNİZ';
+
     printArea.innerHTML = `
       <div class="receipt-header">
-        <div class="receipt-logo-title">O SES ÇİĞKÖFTE</div>
-        <div class="receipt-sub">LEZZETİN ADRESİ - KASA FİŞİ</div>
+        <div class="receipt-logo-title">${storeTitle}</div>
+        <div class="receipt-sub">${storeSubtitle}</div>
       </div>
 
       <div class="receipt-meta">
