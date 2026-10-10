@@ -2028,6 +2028,7 @@ class POSApp {
             <div>
               <span style="font-weight:800; font-size:1.05rem; color:#B45309;">${o.customer_name || 'Karekod Müşterisi'}</span>
               <span class="customer-badge" style="background:#F59E0B; color:white; margin-left:6px;">${o.order_number}</span>
+              ${o.customer_phone ? `<span style="font-size:0.8rem; color:#475569; margin-left:8px; font-weight:600; background:#FEF3C7; padding:2px 8px; border-radius:6px; display:inline-block;">📞 ${o.customer_phone}</span>` : ''}
             </div>
             <div style="font-weight:800; font-size:1.2rem; color:var(--primary-red);">₺${o.total_amount.toFixed(2)}</div>
           </div>

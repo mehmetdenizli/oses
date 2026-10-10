@@ -365,11 +365,86 @@
       border: 1.5px solid var(--border-color);
       border-radius: 12px;
       font-size: 0.95rem;
-      margin-bottom: 10px;
       outline: none;
+      transition: all 0.2s ease;
+      background: #FFFFFF;
+      color: var(--text-dark);
+      font-family: inherit;
     }
     .form-input-qr:focus {
       border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.12);
+    }
+
+    .qr-form-group {
+      margin-bottom: 14px;
+    }
+
+    .qr-form-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #1E293B;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .qr-table-card {
+      background: #F8FAFC;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .qr-table-info-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .qr-table-label-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .qr-table-name-display {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--text-dark);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .qr-table-fixed-badge {
+      background: #E2E8F0;
+      color: #475569;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .qr-payment-info {
+      background: #F0FDF4;
+      border: 1.5px solid #BBF7D0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     /* Success Order View */
@@ -434,8 +509,9 @@
         <!-- Rendered dynamically -->
       </div>
       <div class="drawer-footer">
-        <button class="btn-checkout-qr" style="width: 100%; justify-content: center;" onclick="qrApp.confirmProductWithOptions()">
-          Sepete Ekle - <span id="opt-modal-total-btn">₺0.00</span>
+        <button class="btn-checkout-qr" style="width: 100%; justify-content: space-between; font-size: 1rem; padding: 14px 20px;" onclick="qrApp.confirmProductWithOptions()">
+          <span style="display: flex; align-items: center; gap: 8px;">🛒 Sepete Ekle</span>
+          <span style="background: rgba(255,255,255,0.25); padding: 4px 12px; border-radius: 20px; font-weight: 800;" id="opt-modal-total-btn">₺0.00</span>
         </button>
       </div>
     </div>
@@ -452,25 +528,61 @@
         <div id="checkout-items-list" style="margin-bottom: 16px;"></div>
 
         <div style="margin-top: 14px;">
-          <label style="font-size: 0.85rem; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Adınız Soyadınız / Masa No</label>
-          <input type="text" id="qr-cust-name" class="form-input-qr" placeholder="Örn: Ahmet Bey / Masa 4" required />
+          <!-- 1. Sabit Masa Bilgisi (Müşteri Değiştiremez) -->
+          <div class="qr-table-card">
+            <div class="qr-table-info-left">
+              <span class="qr-table-label-tag">Sipariş Verilen Masa</span>
+              <div class="qr-table-name-display">
+                <span>📍</span>
+                <span id="qr-checkout-table-display">Masa 1</span>
+              </div>
+            </div>
+            <div class="qr-table-fixed-badge">
+              <span>🔒</span> Sabit Masa
+            </div>
+          </div>
 
-          <label style="font-size: 0.85rem; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Telefon Numarası (İsteğe Bağlı)</label>
-          <input type="tel" id="qr-cust-phone" class="form-input-qr" placeholder="05XXXXXXXXX" />
+          <!-- 2. İsim Soyisim (Sipariş Hazırlandığında Hitap İçin) -->
+          <div class="qr-form-group">
+            <label class="qr-form-label">
+              <span>Adınız Soyadınız <strong style="color: #D32F2F;">*</strong></span>
+              <span style="font-size: 0.75rem; color: #64748B; font-weight: 500;">(Seslenebilmemiz için)</span>
+            </label>
+            <input type="text" id="qr-cust-name" class="form-input-qr" placeholder="Örn: Mehmet Bey, Ayşe Hanım..." required autocomplete="name" />
+          </div>
 
-          <label style="font-size: 0.85rem; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Ödeme Yöntemi Tercihi</label>
-          <select id="qr-payment-method" class="form-input-qr">
-            <option value="KASA_ODEME">Tezgahta / Kasada Öde (Nakit veya Kredi Kartı)</option>
-            <option value="MASA_ODEME">Masada Öde</option>
-          </select>
+          <!-- 3. Telefon Numarası (İsteğe Bağlı) -->
+          <div class="qr-form-group">
+            <label class="qr-form-label">
+              <span>Telefon Numarası</span>
+              <span style="font-size: 0.75rem; color: #64748B; font-weight: 500;">(İsteğe Bağlı)</span>
+            </label>
+            <input type="tel" id="qr-cust-phone" class="form-input-qr" placeholder="05XXXXXXXXX" maxlength="15" autocomplete="tel" />
+          </div>
 
-          <label style="font-size: 0.85rem; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Sipariş Notu</label>
-          <input type="text" id="qr-order-note" class="form-input-qr" placeholder="Örn: Yeşillik bol olsun, sos dökülmesin..." />
+          <!-- 4. Kasada Ödeme Bilgilendirmesi (Dropdown Kaldırıldı) -->
+          <div class="qr-payment-info">
+            <span style="font-size: 1.5rem;">💳</span>
+            <div style="font-size: 0.82rem; color: #166534; line-height: 1.4;">
+              <strong style="color: #14532D; display: block; font-size: 0.88rem; margin-bottom: 2px;">Ödeme Kasada</strong>
+              Siparişiniz hazırlandığında ödemenizi kasada nakit veya kredi kartı ile yapabilirsiniz.
+            </div>
+          </div>
+
+          <!-- 5. Sipariş Notu -->
+          <div class="qr-form-group">
+            <label class="qr-form-label">
+              <span>Sipariş Notu</span>
+              <span style="font-size: 0.75rem; color: #64748B; font-weight: 500;">(İsteğe Bağlı)</span>
+            </label>
+            <input type="text" id="qr-order-note" class="form-input-qr" placeholder="Örn: Yeşillik bol olsun, nar ekşisi ayrı olsun..." />
+          </div>
         </div>
       </div>
       <div class="drawer-footer">
-        <button class="btn-checkout-qr" style="width: 100%; justify-content: center; font-size: 1.1rem;" onclick="qrApp.submitQROrder()">
-          🚀 Siparişi Kasaya Gönder (<span id="checkout-total-btn">₺0.00</span>)
+        <button class="btn-checkout-qr" style="width: 100%; justify-content: space-between; font-size: 1rem; padding: 14px 20px;" onclick="qrApp.submitQROrder()">
+          <span style="display: flex; align-items: center; gap: 8px;">🚀 Siparişi Kasaya Gönder</span>
+          <span style="background: rgba(255,255,255,0.25); padding: 4px 12px; border-radius: 20px; font-weight: 800;" id="checkout-total-btn">₺0.00</span>
         </button>
       </div>
     </div>
@@ -505,17 +617,31 @@
         this.cart = [];
         this.activeProduct = null;
         this.selectedOptions = {};
+        this.tableName = 'Masa 1';
+        this.submittedCustomerName = '';
         
         this.init();
+      }
+
+      formatTableName(raw) {
+        if (!raw) return 'Masa 1';
+        let clean = decodeURIComponent(raw).trim();
+        if (/^\d+$/.test(clean)) return `Masa ${clean}`;
+        const mMatch = clean.match(/^Masa\s*(\d+)$/i);
+        if (mMatch) return `Masa ${mMatch[1]}`;
+        return clean;
       }
 
       async init() {
         const urlParams = new URLSearchParams(window.location.search);
         const tableParam = urlParams.get('table') || urlParams.get('masa');
-        if (tableParam) {
-          document.getElementById('qr-table-tag').innerText = `📍 ${tableParam} Sipariş Menüsü`;
-          document.getElementById('qr-cust-name').value = tableParam;
-        }
+        this.tableName = this.formatTableName(tableParam);
+
+        const tableTag = document.getElementById('qr-table-tag');
+        if (tableTag) tableTag.innerText = `📍 ${this.tableName} Sipariş Menüsü`;
+
+        const tableDisplay = document.getElementById('qr-checkout-table-display');
+        if (tableDisplay) tableDisplay.innerText = this.tableName;
 
         await Promise.all([
           this.fetchStoreSettings(),
@@ -807,6 +933,10 @@
         container.innerHTML = html;
         const total = this.cart.reduce((sum, i) => sum + i.totalPrice, 0);
         document.getElementById('checkout-total-btn').innerText = `₺${total.toFixed(2)}`;
+        
+        const tableDisplay = document.getElementById('qr-checkout-table-display');
+        if (tableDisplay) tableDisplay.innerText = this.tableName;
+
         this.openModal('modal-checkout-drawer');
       }
 
@@ -823,24 +953,36 @@
       async submitQROrder() {
         if (this.cart.length === 0) return;
 
-        const custName = document.getElementById('qr-cust-name').value.trim() || 'Mobil Karekod Müşterisi';
-        const custPhone = document.getElementById('qr-cust-phone').value.trim() || '';
-        const paymentMethod = document.getElementById('qr-payment-method').value;
-        const note = document.getElementById('qr-order-note').value.trim();
+        const custNameInput = document.getElementById('qr-cust-name');
+        const custName = custNameInput ? custNameInput.value.trim() : '';
+        if (!custName) {
+          alert('Lütfen siparişiniz hazırlandığında size seslenebilmemiz için Adınızı Soyadınızı yazınız.');
+          if (custNameInput) custNameInput.focus();
+          return;
+        }
+
+        this.submittedCustomerName = custName;
+        const custPhone = document.getElementById('qr-cust-phone') ? document.getElementById('qr-cust-phone').value.trim() : '';
+        const note = document.getElementById('qr-order-note') ? document.getElementById('qr-order-note').value.trim() : '';
+        const tableName = this.tableName || 'Masa 1';
 
         const subtotal = this.cart.reduce((sum, i) => sum + i.totalPrice, 0);
 
+        // Kasa ekranında ve adisyonda net görünmesi: "Masa 1 - Mehmet Demir"
+        const finalCustomerName = `${tableName} - ${custName}`;
+
         const orderPayload = {
           customer_phone: custPhone,
-          customer_name: custName,
-          customer_address: 'Karekod Mobil Sipariş',
+          customer_name: finalCustomerName,
+          customer_address: tableName,
           source: 'KAREKOD_MUSTERI',
+          order_type: 'MASA',
           subtotal: subtotal,
           discount_amount: 0.0,
           discount_type: 'NONE',
           total_amount: subtotal,
-          payment_method: paymentMethod === 'MASA_ODEME' ? 'VERESİYE' : 'NAKIT',
-          note: note ? `📱 [KAREKOD MÜŞTERİ SİPARİŞİ] ${note}` : '📱 [KAREKOD MÜŞTERİ SİPARİŞİ]',
+          payment_method: 'KASA_ODEME',
+          note: note ? `📱 [${tableName} - ${custName}] ${note}` : `📱 [${tableName} - ${custName}]`,
           items: this.cart.map(item => ({
             product_id: item.productId,
             product_name: item.productName,
@@ -866,14 +1008,14 @@
           this.closeModal('modal-checkout-drawer');
 
           this.openModal('modal-success-drawer');
-          this.startOrderStatusTracker(order.id);
+          this.startOrderStatusTracker(order.id, custName);
 
         } catch (err) {
           alert('Sipariş iletilirken hata oluştu. Lütfen tekrar deneyin.');
         }
       }
 
-      startOrderStatusTracker(orderId) {
+      startOrderStatusTracker(orderId, custName) {
         if (this.statusInterval) clearInterval(this.statusInterval);
         
         this.statusInterval = setInterval(async () => {
@@ -890,9 +1032,10 @@
             if (order.order_status === 'TAMAMLANDI') {
               if (statusIcon) statusIcon.innerText = '🎉';
               if (statusTitle) statusTitle.innerText = 'Siparişiniz Onaylandı!';
-              if (statusDesc) statusDesc.innerHTML = `Sipariş <strong>#${order.order_number}</strong> kasada onaylandı ve fişiniz basıldı 🖨️. Lezzetli çiğ köfteniz hazırlanıyor!`;
+              const greeting = custName ? `Sayın <strong>${custName}</strong>, ` : '';
+              if (statusDesc) statusDesc.innerHTML = `${greeting}<strong>#${order.order_number}</strong> nolu siparişiniz kasada onaylandı ve fişiniz basıldı 🖨️.<br><br>Siparişiniz hazırlanıyor, hazır olduğunda isminizle sesleneceğiz! 🌶️`;
               if (statusText) {
-                statusText.innerText = '🟢 Onaylandı - Fiş Basıldı 🖨️';
+                statusText.innerText = '🟢 Onaylandı - Hazırlanıyor 🌶️';
                 statusText.style.color = '#059669';
               }
               clearInterval(this.statusInterval);
