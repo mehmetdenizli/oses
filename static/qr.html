@@ -912,6 +912,14 @@
         } catch (e) { console.error(e); }
       }
 
+      getProductPrice(product) {
+        if (!product) return 0.0;
+        // QR menü masadaki müşteriler içindir; her zaman masa fiyatı (price_masa) geçerlidir
+        return (product.price_masa !== undefined && product.price_masa !== null && Number(product.price_masa) > 0)
+          ? Number(product.price_masa)
+          : Number(product.price || 0.0);
+      }
+
       renderCategoryPills() {
         const nav = document.getElementById('qr-cat-nav');
         let html = `<button class="cat-pill active" onclick="qrApp.filterCategory('all', this)">✨ Tüm Menü</button>`;
@@ -980,7 +988,7 @@
                   <div class="p-title">${p.name}</div>
                   <div class="p-desc">${p.description || ''}</div>
                   <div class="p-bottom">
-                    <span class="p-price">₺${p.price.toFixed(2)}</span>
+                    <span class="p-price">₺${this.getProductPrice(p).toFixed(2)}</span>
                     <button class="${btnClass}" onclick="qrApp.openProductModal(${p.id})">${btnText}</button>
                   </div>
                 </div>
@@ -1075,7 +1083,7 @@
 
       calculateCurrentModalTotal() {
         if (!this.activeProduct) return 0.0;
-        let total = this.activeProduct.price;
+        let total = this.getProductPrice(this.activeProduct);
 
         this.optionGroups.forEach(g => {
           const selected = this.selectedOptions[g.id] || [];
@@ -1131,7 +1139,8 @@
       }
 
       addToCart(product, selectedOptionsList, unitPrice) {
-        const price = unitPrice > 0 ? unitPrice : product.price;
+        const defaultPrice = this.getProductPrice(product);
+        const price = unitPrice > 0 ? unitPrice : defaultPrice;
         const optionsSummary = selectedOptionsList.join(', ');
 
         this.cart.push({
