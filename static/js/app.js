@@ -2209,7 +2209,7 @@ class POSApp {
     if (!box) return;
 
     if (this.qrMode === 'custom') {
-      const savedDomain = localStorage.getItem('oses_qr_domain') || (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.onrender.com';
+      const savedDomain = localStorage.getItem('oses_qr_domain') || (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://osesbaglar.onrender.com';
       box.innerHTML = `
         <div style="background: #ECFDF5; border: 1px solid #6EE7B7; padding: 12px 14px; border-radius: 12px; text-align: left;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
@@ -2298,7 +2298,7 @@ class POSApp {
     }
 
     // Fallback to custom Render .com domain if available
-    const fallbackDomain = (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.onrender.com';
+    const fallbackDomain = (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://osesbaglar.onrender.com';
     return `${fallbackDomain}/qr?masa=${encodeURIComponent(tableName)}`;
   }
 
