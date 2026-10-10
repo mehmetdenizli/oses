@@ -52,6 +52,15 @@ if (-not $isAdmin) {
 }
 Write-Host ""
 
+# Onceki Calisan Servisleri Temizleme (Dosya kilitlenmelerini onlemek icin)
+try {
+    Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object {
+        Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+    }
+} catch {}
+
+
 # 3. Python 3.9+ Kontrolu ve Otomatik Kurulumu
 Write-Step "2/6: Python 3 Incelemesi Yapiliyor..."
 $pythonPath = $null
@@ -188,6 +197,24 @@ try {
         $KioskShortcut.Save()
         Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Kasa Ekrani (Tam Ekran Kiosk)'"
     }
+
+    # 4. Sunucuyu ve Tuneli Durdur Kisayolu
+    $StopShortcutPath = Join-Path $DesktopPath "O Ses POS - Sunucuyu Durdur.lnk"
+    $StopShortcut = $WScriptShell.CreateShortcut($StopShortcutPath)
+    $StopShortcut.TargetPath = Join-Path $ProjectDir "stop_windows.bat"
+    $StopShortcut.WorkingDirectory = $ProjectDir
+    $StopShortcut.Description = "Arka planda calisan POS sunucusunu ve Cloudflare tunelini tek tikla kapatir."
+    $StopShortcut.Save()
+    Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Sunucuyu Durdur'"
+
+    # 5. Sistemi Kaldir (Uninstall) Kisayolu
+    $UninstallShortcutPath = Join-Path $DesktopPath "O Ses POS - Kaldir (Uninstall).lnk"
+    $UninstallShortcut = $WScriptShell.CreateShortcut($UninstallShortcutPath)
+    $UninstallShortcut.TargetPath = Join-Path $InstallerDir "uninstall_windows.bat"
+    $UninstallShortcut.WorkingDirectory = $InstallerDir
+    $UninstallShortcut.Description = "O Ses POS sistemini, otomatik baslatmayi ve kisayollari Windows'tan tamamen kaldirir."
+    $UninstallShortcut.Save()
+    Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Kaldir (Uninstall)'"
 } catch {
     Write-Warn "Masaustu kisayollari olusturulurken kucuk bir uyari alindi."
 }

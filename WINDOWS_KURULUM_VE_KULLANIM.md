@@ -130,3 +130,25 @@ Tüm veriler tamamen kasanın diski üzerindeki tek bir dosyada saklanır:
 
 ### 🛡️ Yedek Alma:
 Haftada bir kez `C:\OsesPOS\oses_pos.db` dosyasını bir USB belleğe veya Google Drive / OneDrive klasörüne kopyalayarak tüm müşteri kayıtlarını, menüyü ve geçmiş satış raporlarını saniyeler içinde yedekleyebilirsiniz.
+
+---
+
+## 🛑 7. BÖLÜM: Arka Plan Servislerini Durdurma & Uygulamayı Kaldırma (Uninstall)
+
+### ⏹️ POS Sunucusu ve Tüneli Geçici Olarak Durdurma
+Arka planda çalışan servisleri durdurmak için:
+- Masaüstündeki **`O Ses POS - Sunucuyu Durdur`** kısayoluna çift tıklayın, **veya**
+- Proje klasöründeki **`stop_windows.bat`** dosyasını çalıştırın.
+- Bu işlem hem Kasa sunucusunu (port 8000) hem de Cloudflare tünelini anında sonlandırır.
+
+### 🗑️ Uygulamayı ve Otomatik Başlatmayı Windows'tan Tamamen Kaldırma
+Uygulamayı ve arka plan servislerini tamamen temizlemek için:
+- Masaüstündeki **`O Ses POS - Kaldir (Uninstall)`** kısayoluna çift tıklayın, **veya**
+- **`windows_installer/uninstall_windows.bat`** (veya ana dizindeki `uninstall_windows.bat`) dosyasını çalıştırın.
+- **Bu araç:**
+  1. Arka planda çalışan `cloudflared.exe` ve `python.exe` servislerini anında kapatır.
+  2. Windows Görev Zamanlayıcısı'ndaki (`OsesPOS_AutoServer`) otomatik başlangıç görevini siler.
+  3. Windows Başlangıç (`Startup`) klasöründeki kısayolu kaldırır.
+  4. Masaüstündeki tüm `O Ses POS` kısayollarını temizler.
+  5. İsteğe bağlı olarak `venv` sanal ortamını ve `cloudflared.exe` dosyasını diskten temizler.
+

@@ -26,6 +26,10 @@ cloudflared
 cloudflared.exe
 get-pip*.py
 
+# Node.js
+node_modules/
+package-lock.json
+
 # OS / IDE
 .DS_Store
 .vscode/

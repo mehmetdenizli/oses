@@ -45,3 +45,28 @@ cd C:\OsesPOS\windows_installer
 ### 🖱️ 3. YÖNTEM: Fare İle Sağ Tıklayarak
 1. `setup_windows.ps1` dosyasına sağ tıklayın.
 2. **"PowerShell ile Çalıştır"** (Run with PowerShell) seçeneğini tıklayın.
+
+---
+
+## 🛑 Arka Plan Servislerini Durdurma (Stop)
+
+POS sunucusunu ve Cloudflare tünelini geçici olarak kapatmak istediğinizde:
+- Masaüstünüzdeki **`O Ses POS - Sunucuyu Durdur`** kısayoluna çift tıklayın, **veya**
+- Proje ana klasöründeki **`stop_windows.bat`** dosyasını çalıştırın.
+Arka planda port 8000'i dinleyen Python ve `cloudflared.exe` tüneli anında kapatılır.
+
+---
+
+## 🗑️ Uygulamayı ve Arka Plan Servislerini Tamamen Kaldırma (Uninstall)
+
+Uygulamayı, otomatik açılış servislerini ve kısayolları bilgisayardan temizlemek istediğinizde:
+- Masaüstündeki **`O Ses POS - Kaldir (Uninstall)`** kısayoluna çift tıklayın, **veya**
+- `windows_installer` klasöründeki **`uninstall_windows.bat`** (veya ana klasördeki `uninstall_windows.bat`) dosyasını çalıştırın.
+
+**Kaldırma Sihirbazı Neler Yapar?**
+1. Arka planda çalışan `cloudflared.exe` ve `python.exe` süreçlerini anında sonlandırır.
+2. Windows Görev Zamanlayıcısı (`OsesPOS_AutoServer`) kaydını siler.
+3. Windows Başlangıç Klasöründeki (`shell:startup`) otomatik başlatıcıyı siler.
+4. Masaüstündeki tüm "O Ses POS" kısayollarını temizler.
+5. Size sorarak `venv` sanal ortamını ve indirilen `cloudflared.exe` dosyasını diskten temizler.
+
