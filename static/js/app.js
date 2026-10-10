@@ -958,6 +958,7 @@ class POSApp {
 
         let html = '';
         orders.forEach(o => {
+          const isCancelled = o.order_status === 'IPTAL';
           html += `
             <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
               <div>
@@ -965,10 +966,14 @@ class POSApp {
                 <span class="customer-badge" style="background:#333; color:white;">${o.source}</span> 
                 <span style="font-size:0.8rem; color:#666;">${o.created_at}</span>
                 <div style="font-size:0.85rem; font-weight:600;">👤 ${o.customer_name} (${o.payment_method})</div>
+                ${isCancelled ? `<span style="font-size:0.75rem; color:#DC2626; font-weight:800; background:#FEE2E2; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:2px;">❌ İPTAL EDİLDİ</span>` : ''}
               </div>
-              <div style="text-align:right;">
-                <div style="font-weight:900; font-size:1.1rem; font-family:var(--font-mono);">₺${o.total_amount.toFixed(2)}</div>
-                <button class="btn-secondary" style="padding:3px 8px; font-size:0.75rem;" onclick="app.reprintOrder(${o.id})">🖨️ Fiş Bas</button>
+              <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                <div style="font-weight:900; font-size:1.1rem; font-family:var(--font-mono); ${isCancelled ? 'color:#94A3B8; text-decoration:line-through;' : ''}">₺${o.total_amount.toFixed(2)}</div>
+                <div style="display:flex; gap:4px;">
+                  <button class="btn-secondary" style="padding:3px 8px; font-size:0.75rem;" onclick="app.reprintOrder(${o.id})">🖨️ Fiş Bas</button>
+                  ${!isCancelled ? `<button class="btn-secondary" style="padding:3px 8px; font-size:0.75rem; color:#DC2626; border-color:#FCA5A5; background:#FEF2F2;" onclick="app.cancelCompletedOrder(${o.id})">❌ İptal</button>` : ''}
+                </div>
               </div>
             </div>
           `;
@@ -1654,6 +1659,8 @@ class POSApp {
             ₺${o.total_amount.toFixed(2)}
           </div>
           <div style="display: flex; gap: 4px;">
+            <button type="button" style="background: #2563EB; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; cursor: pointer;" onclick="app.editOpenOrder(${o.id})" title="Sepete Al & Düzenle">✏️</button>
+            <button type="button" style="background: #EF4444; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; cursor: pointer;" onclick="app.cancelOpenOrder(${o.id})" title="Masayı İptal Et">❌</button>
             <button type="button" style="background: #10B981; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; cursor: pointer;" onclick="app.checkoutOpenOrder(${o.id}, 'NAKIT', ${o.total_amount})" title="Nakit İle Kapat">💵</button>
             <button type="button" style="background: #3B82F6; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; cursor: pointer;" onclick="app.checkoutOpenOrder(${o.id}, 'KREDI_KART', ${o.total_amount})" title="Kredi Kartı (inPOS m530)">💳</button>
             <button type="button" style="background: #64748B; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 0.7rem; font-weight: 700; cursor: pointer;" onclick="app.reprintOrder(${o.id})" title="Fiş Yazdır">🖨️</button>
@@ -1717,6 +1724,8 @@ class POSApp {
             ${itemsListHtml}
           </div>
           <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px;">
+            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; color: #DC2626; border-color: #FCA5A5; background: #FEF2F2;" onclick="app.cancelOpenOrder(${o.id})">❌ Masayı İptal Et</button>
+            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; color: #1D4ED8; border-color: #93C5FD; background: #EFF6FF;" onclick="app.editOpenOrder(${o.id})">✏️ Sepete Yükle & Düzenle</button>
             <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="app.reprintOrder(${o.id})">🖨️ Fiş Yazdır</button>
             <button class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem; background: #10B981;" onclick="app.checkoutOpenOrder(${o.id}, 'NAKIT', ${o.total_amount})">💵 Nakit İle Kapat</button>
             <button class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem; background: #3B82F6;" onclick="app.checkoutOpenOrder(${o.id}, 'KREDI_KART', ${o.total_amount})">💳 Kredi Kartı (inPOS m530)</button>
@@ -1750,6 +1759,102 @@ class POSApp {
       this.renderOpenOrdersList(orders);
     } catch (err) {
       this.showToast('Masa kapatılırken hata!', 'error');
+    }
+  }
+
+  async cancelOpenOrder(orderId) {
+    if (!confirm('Bu masa siparişini tamamen iptal etmek istediğinizden emin misiniz?\n\n(Açık adisyon silinecek ve ciroya yansımayacaktır)')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/orders/${orderId}/cancel`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'İptal edilemedi');
+
+      this.showToast('Masa siparişi başarıyla iptal edildi! ❌', 'info');
+      const orders = await this.fetchOpenOrders();
+      this.renderOpenOrdersList(orders);
+    } catch (err) {
+      this.showToast(err.message || 'Sipariş iptal edilirken hata oluştu!', 'error');
+    }
+  }
+
+  async editOpenOrder(orderId) {
+    if (this.cart && this.cart.length > 0) {
+      if (!confirm('Şu anda satış sepetinizde ürünler var. Açık masayı sepete yüklemek mevcut sepetinizi temizleyecektir. Devam edilsin mi?')) {
+        return;
+      }
+    }
+
+    try {
+      const res = await fetch(`/api/orders/${orderId}`);
+      if (!res.ok) throw new Error('Sipariş detayları alınamadı');
+      const order = await res.json();
+
+      // Açık siparişi iptal ediyoruz ki mükerrer kayıt oluşmasın
+      await fetch(`/api/orders/${orderId}/cancel`, { method: 'POST' });
+
+      // Ürünleri satış sepetine yükle
+      this.cart = (order.items || []).map(item => ({
+        cartItemId: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        productId: item.product_id,
+        productName: item.product_name,
+        unitPrice: item.unit_price,
+        quantity: item.quantity,
+        optionsSummary: item.options_summary || '',
+        totalPrice: item.total_price
+      }));
+
+      // Müşteri / Masa bilgilerini geri yükle
+      if (order.customer_phone) {
+        this.activeCustomer = {
+          name: order.customer_name,
+          phone: order.customer_phone,
+          address: order.customer_address
+        };
+        const custDisplay = document.getElementById('selected-customer-display');
+        if (custDisplay) {
+          custDisplay.innerHTML = `👤 ${order.customer_name} <button class="btn-clear-customer" onclick="app.clearCustomer()">✕</button>`;
+        }
+      } else {
+        this.activeCustomer = null;
+      }
+
+      this.orderType = order.order_type || 'MASA';
+      this.tableNumber = order.customer_address || order.customer_name || 'Masa 1';
+
+      const noteInput = document.getElementById('order-note-input');
+      if (noteInput && order.note) {
+        noteInput.value = order.note.replace(' [İPTAL EDİLDİ]', '').replace(' [Müşteri İptal Etti]', '');
+      }
+
+      this.renderCart();
+      this.closeModal('modal-open-orders');
+      await this.fetchOpenOrders();
+
+      this.showToast(`Masa (${order.customer_name}) sepete yüklendi. İstediğiniz değişikliği yapıp siparişi güncelleyebilirsiniz! ✏️`, 'success');
+
+    } catch (err) {
+      this.showToast('Sipariş düzenleme moduna alınırken hata!', 'error');
+    }
+  }
+
+  async cancelCompletedOrder(orderId) {
+    if (!confirm('Bu adisyonu iptal etmek istediğinizden emin misiniz?\n\n(Bu işlem siparişi iptal durumuna getirecek ve gün sonu cirosundan düşecektir)')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/orders/${orderId}/cancel`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'İptal edilemedi');
+
+      this.showToast('Sipariş iptal edildi ve cirodan düşüldü! ❌', 'info');
+      this.switchReportSubtab('orders');
+      this.fetchDailyReport();
+    } catch (err) {
+      this.showToast(err.message || 'Sipariş iptal edilirken hata oluştu!', 'error');
     }
   }
 

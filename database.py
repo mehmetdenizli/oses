@@ -764,7 +764,7 @@ def get_analytics_report(period='daily', date_str=None, month_str=None, start_da
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    where_clause = "WHERE 1=1"
+    where_clause = "WHERE (order_status IS NULL OR order_status != 'IPTAL')"
     params = []
 
     if period == 'daily':
@@ -906,6 +906,52 @@ def reject_qr_order(order_id: int):
     conn.execute("UPDATE orders SET order_status = 'IPTAL' WHERE id = ?", (order_id,))
     conn.close()
     return {"status": "success", "message": f"Sipariş #{order_id} reddedildi."}
+
+def cancel_order(order_id: int, reason: str = "IPTAL"):
+    conn = get_db_connection()
+    row = conn.execute("SELECT id, order_status, order_number FROM orders WHERE id = ?", (order_id,)).fetchone()
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "Sipariş bulunamadı"}
+    
+    conn.execute("""
+        UPDATE orders 
+        SET order_status = 'IPTAL',
+            note = CASE 
+                WHEN note IS NULL OR note = '' THEN '[İPTAL EDİLDİ]' 
+                ELSE note || ' [İPTAL EDİLDİ]' 
+            END
+        WHERE id = ?
+    """, (order_id,))
+    conn.close()
+    return {"status": "success", "message": f"Sipariş #{row['order_number']} başarıyla iptal edildi."}
+
+def cancel_customer_qr_order(order_id: int):
+    conn = get_db_connection()
+    row = conn.execute("SELECT id, order_status, order_number FROM orders WHERE id = ?", (order_id,)).fetchone()
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "Sipariş bulunamadı"}
+    
+    if row["order_status"] != "BEKLIYOR":
+        conn.close()
+        return {
+            "status": "error", 
+            "message": "Sipariş kasada onaylandığı için iptal edilemez. Lütfen görevliye danışınız."
+        }
+    
+    conn.execute("""
+        UPDATE orders 
+        SET order_status = 'IPTAL',
+            note = CASE 
+                WHEN note IS NULL OR note = '' THEN '[MÜŞTERİ İPTAL ETTİ]' 
+                ELSE note || ' [MÜŞTERİ İPTAL ETTİ]' 
+            END
+        WHERE id = ?
+    """, (order_id,))
+    conn.close()
+    return {"status": "success", "message": f"Sipariş #{row['order_number']} başarıyla iptal edildi."}
+
 
 def update_product_image(product_id: int, image_url: str):
     conn = get_db_connection()

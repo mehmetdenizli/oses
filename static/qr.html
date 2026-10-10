@@ -447,6 +447,27 @@
       gap: 12px;
     }
 
+    .btn-cancel-order-qr {
+      background: #FEF2F2;
+      color: #DC2626;
+      border: 1.5px solid #FCA5A5;
+      padding: 12px 18px;
+      border-radius: 30px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+    .btn-cancel-order-qr:hover {
+      background: #FEE2E2;
+      border-color: #EF4444;
+    }
+
     /* Success Order View */
     .success-card {
       text-align: center;
@@ -600,9 +621,14 @@
         <div style="background: #FFFBEB; border: 1.5px dashed #F59E0B; padding: 14px; border-radius: 12px; margin: 16px 0; font-weight: 700;">
           Sipariş Durumu: <span id="success-order-status" style="color: #B45309; font-size: 1.1rem;">⏳ Kasada Onay Bekliyor...</span>
         </div>
-        <button class="btn-checkout-qr" style="width: 100%; justify-content: center;" onclick="location.reload()">
-          Yeni Sipariş Ver
-        </button>
+        <div id="qr-pending-actions" style="margin-top: 14px; display: flex; flex-direction: column; gap: 8px;">
+          <button class="btn-cancel-order-qr" id="btn-cancel-and-edit" onclick="qrApp.cancelAndEditOrder()">
+            ✏️ Siparişi İptal Et & Sepeti Düzenle
+          </button>
+          <button class="btn-secondary" style="width: 100%; border-radius: 30px; padding: 10px; font-weight: 700; color: #64748B; border: 1.5px solid #CBD5E1; background: white; cursor: pointer;" onclick="location.reload()">
+            Menüye Dön
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -619,6 +645,8 @@
         this.selectedOptions = {};
         this.tableName = 'Masa 1';
         this.submittedCustomerName = '';
+        this.currentActiveOrderId = null;
+        this.lastSubmittedCart = [];
         
         this.init();
       }
@@ -1003,6 +1031,9 @@
           if (!res.ok) throw new Error('Sipariş gönderilemedi');
 
           const order = await res.json();
+          this.lastSubmittedCart = JSON.parse(JSON.stringify(this.cart));
+          this.currentActiveOrderId = order.id;
+          
           this.cart = [];
           this.renderCartBar();
           this.closeModal('modal-checkout-drawer');
@@ -1012,6 +1043,42 @@
 
         } catch (err) {
           alert('Sipariş iletilirken hata oluştu. Lütfen tekrar deneyin.');
+        }
+      }
+
+      async cancelAndEditOrder() {
+        if (!this.currentActiveOrderId) return;
+        
+        if (!confirm('Siparişinizi iptal edip sepetinizi düzenlemek istiyor musunuz?\n\n(Ürün ekleyip/çıkarabilir veya siparişinizi güncelleyebilirsiniz)')) {
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/orders/${this.currentActiveOrderId}/cancel-customer`, {
+            method: 'POST'
+          });
+          const data = await res.json();
+          
+          if (!res.ok) {
+            alert(data.detail || data.message || 'Sipariş kasada onaylandığı için iptal edilemez.');
+            return;
+          }
+
+          if (this.statusInterval) clearInterval(this.statusInterval);
+
+          // Sepeti eski haline geri yükle
+          if (this.lastSubmittedCart && this.lastSubmittedCart.length > 0) {
+            this.cart = JSON.parse(JSON.stringify(this.lastSubmittedCart));
+          }
+
+          this.renderCartBar();
+          this.closeModal('modal-success-drawer');
+
+          // Sepet çekmecesini tekrar açarak müşterinin düzenlemesine izin ver
+          this.openCheckoutDrawer();
+
+        } catch (err) {
+          alert('İptal işlemi gerçekleştirilemedi. Lütfen tekrar deneyin.');
         }
       }
 
@@ -1038,14 +1105,30 @@
                 statusText.innerText = '🟢 Onaylandı - Hazırlanıyor 🌶️';
                 statusText.style.color = '#059669';
               }
+              const actionsEl = document.getElementById('qr-pending-actions');
+              if (actionsEl) {
+                actionsEl.innerHTML = `
+                  <button class="btn-checkout-qr" style="width: 100%; justify-content: center; margin-top: 10px;" onclick="location.reload()">
+                    Afiyet Olsun! Yeni Sipariş Menüsü
+                  </button>
+                `;
+              }
               clearInterval(this.statusInterval);
             } else if (order.order_status === 'IPTAL') {
               if (statusIcon) statusIcon.innerText = '❌';
               if (statusTitle) statusTitle.innerText = 'Sipariş İptal Edildi';
-              if (statusDesc) statusDesc.innerText = 'Siparişiniz kasa tarafından iptal edilmiştir. Lütfen görevli ile iletişime geçiniz.';
+              if (statusDesc) statusDesc.innerText = 'Siparişiniz iptal edilmiştir. İsterseniz menüden yeni bir sipariş oluşturabilirsiniz.';
               if (statusText) {
                 statusText.innerText = '🔴 İptal Edildi';
                 statusText.style.color = '#D32F2F';
+              }
+              const actionsEl = document.getElementById('qr-pending-actions');
+              if (actionsEl) {
+                actionsEl.innerHTML = `
+                  <button class="btn-checkout-qr" style="width: 100%; justify-content: center; margin-top: 10px;" onclick="location.reload()">
+                    Yeni Sipariş Menüsüne Dön
+                  </button>
+                `;
               }
               clearInterval(this.statusInterval);
             }

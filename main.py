@@ -317,6 +317,21 @@ def approve_qr_order(order_id: int):
 def reject_qr_order(order_id: int):
     return database.reject_qr_order(order_id)
 
+@app.post("/api/orders/{order_id}/cancel")
+def cancel_order_route(order_id: int):
+    res = database.cancel_order(order_id)
+    if res.get("status") == "error":
+        raise HTTPException(status_code=400, detail=res.get("message"))
+    return res
+
+@app.post("/api/orders/{order_id}/cancel-customer")
+def cancel_customer_qr_order_route(order_id: int):
+    res = database.cancel_customer_qr_order(order_id)
+    if res.get("status") == "error":
+        raise HTTPException(status_code=400, detail=res.get("message"))
+    return res
+
+
 @app.get("/api/orders/{order_id}")
 def get_order(order_id: int):
     order = database.get_order_details(order_id)
