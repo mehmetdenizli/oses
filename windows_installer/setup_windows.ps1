@@ -198,6 +198,15 @@ try {
         $KioskShortcut.Description = "Kasa dokunmatik ekranlar icin kilitli tam ekran modunda acar."
         $KioskShortcut.Save()
         Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Kasa Ekrani (Tam Ekran Kiosk)'"
+
+        # 4. Yazici Tanitma Kisayolu (kiosk-printing OLMADAN, Spenta'yi kalici secmek icin)
+        $PrinterSetupShortcutPath = Join-Path $DesktopPath "O Ses POS - Yaziciyi Spenta Sec (1 Seferlik).lnk"
+        $PrinterSetupShortcut = $WScriptShell.CreateShortcut($PrinterSetupShortcutPath)
+        $PrinterSetupShortcut.TargetPath = $ChromeExe
+        $PrinterSetupShortcut.Arguments = "--app=http://localhost:8000 --user-data-dir=`"$PosProfilePath`""
+        $PrinterSetupShortcut.Description = "Spenta yazicinizi Chrome profilinize 1 kere tanitip kaydetmek icin ekrani kapatmadan acar."
+        $PrinterSetupShortcut.Save()
+        Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Yaziciyi Spenta Sec (1 Seferlik)'"
     }
 
     # 4. Sunucuyu ve Tuneli Durdur Kisayolu
