@@ -8,7 +8,7 @@ class POSApp {
     this.products = [];
     this.optionGroups = [];
     this.activeCategory = 'ALL';
-    this.orderType = 'PAKET'; // 'PAKET' (Gel-Al) or 'MASA' (Salon)
+    this.orderType = 'PAKET'; // 'PAKET' or 'MASA' (Salon)
     this.cart = [];
     this.activeCustomer = null;
     this.discount = { type: 'NONE', value: 0 };
@@ -103,7 +103,7 @@ class POSApp {
     this.orderType = type;
     this.renderCategoryTabs();
     this.renderProductGrid();
-    this.showToast(`Sipariş Tarifesi Değişti: ${type === 'MASA' ? '🍽️ MASA (Salon)' : '📦 PAKET (Gel-Al)'}`, 'info');
+    this.showToast(`Sipariş Tarifesi Değişti: ${type === 'MASA' ? '🍽️ MASA (Salon)' : '📦 PAKET'}`, 'info');
   }
 
   // --- Rendering POS Interface ---
@@ -114,7 +114,7 @@ class POSApp {
 
     let html = `
       <button class="category-tab ${this.orderType === 'PAKET' ? 'active' : ''}" style="${this.orderType === 'PAKET' ? 'background: linear-gradient(135deg, #10B981 0%, #059669 100%); color:white; font-weight:800;' : 'background:#E2E8F0; color:#334155; font-weight:700;'}" onclick="app.setOrderType('PAKET')">
-        📦 PAKET (Gel-Al)
+        📦 PAKET
       </button>
       <button class="category-tab ${this.orderType === 'MASA' ? 'active' : ''}" style="${this.orderType === 'MASA' ? 'background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color:white; font-weight:800;' : 'background:#E2E8F0; color:#334155; font-weight:700;'}" onclick="app.setOrderType('MASA')">
         🍽️ MASA (Salon)
@@ -162,7 +162,7 @@ class POSApp {
     filtered.forEach(p => {
       const hasOpts = p.has_options === 1;
       const currentPrice = this.getProductPrice(p);
-      const modeBadge = this.orderType === 'MASA' 
+      const modeBadge = this.orderType === 'MASA'
         ? `<span class="product-badge-opt" style="background:#DBEAFE; color:#1E40AF;">🍽️ Masa</span>`
         : `<span class="product-badge-opt" style="background:#D1FAE5; color:#065F46;">📦 Paket</span>`;
 
@@ -1304,7 +1304,7 @@ class POSApp {
     document.getElementById('edit-p-desc').value = product.description || '';
     document.getElementById('edit-p-unit').value = product.unit || 'Adet';
     document.getElementById('edit-p-icon').value = product.image_symbol || '🌶️';
-    
+
     const imgUrl = product.image_url || '';
     document.getElementById('edit-p-image-url').value = imgUrl;
     document.getElementById('edit-p-image-preview').innerHTML = imgUrl
@@ -1507,7 +1507,7 @@ class POSApp {
   async _submitOrderInternal(subtotal, discountAmount, totalAmount) {
     const orderPayload = {
       customer_phone: this.activeCustomer ? this.activeCustomer.phone : null,
-      customer_name: this.activeCustomer ? this.activeCustomer.name : 'Tezgah / Gel-Al Müşterisi',
+      customer_name: this.activeCustomer ? this.activeCustomer.name : 'Paket Müşterisi',
       customer_address: this.activeCustomer ? this.activeCustomer.address : '',
       source: 'KASA',
       order_type: this.orderType,
@@ -1574,7 +1574,7 @@ class POSApp {
 
     const orderPayload = {
       customer_phone: this.activeCustomer ? this.activeCustomer.phone : null,
-      customer_name: this.activeCustomer ? this.activeCustomer.name : (this.orderType === 'MASA' ? 'Açık Masa Adisyonu' : 'Tezgah / Gel-Al Müşterisi'),
+      customer_name: this.activeCustomer ? this.activeCustomer.name : (this.orderType === 'MASA' ? 'Açık Masa Adisyonu' : 'Paket Müşterisi'),
       customer_address: this.activeCustomer ? this.activeCustomer.address : '',
       source: 'KASA',
       order_type: this.orderType,
@@ -1882,8 +1882,8 @@ class POSApp {
       `;
     });
 
-    const hasCustomer = order.customer_name && order.customer_name !== 'Tezgah / Gel-Al Müşterisi';
-    const orderTypeLabel = (order.order_type === 'MASA' || order.order_type === 'SALON') ? '🍽️ MASA (Salon)' : '📦 PAKET (Gel-Al)';
+    const hasCustomer = order.customer_name && order.customer_name !== 'Paket Müşterisi';
+    const orderTypeLabel = (order.order_type === 'MASA' || order.order_type === 'SALON') ? '🍽️ MASA (Salon)' : '📦 PAKET';
 
     const storeTitle = (this.storeSettings && this.storeSettings.store_name) ? this.storeSettings.store_name : 'OSES BAĞLAR';
     const storeSubtitle = (this.storeSettings && this.storeSettings.store_subtitle) ? this.storeSettings.store_subtitle : 'LEZZETİN ADRESİNE HOŞGELDİNİZ';
