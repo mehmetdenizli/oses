@@ -866,6 +866,31 @@ def get_pending_qr_orders():
     conn.close()
     return res
 
+def get_unprinted_qr_orders():
+    conn = get_db_connection()
+    orders = conn.execute("""
+        SELECT * FROM orders 
+        WHERE source = 'KAREKOD_MUSTERI' AND (is_printed IS NULL OR is_printed = 0) AND (order_status IS NULL OR order_status != 'IPTAL')
+        ORDER BY id ASC
+    """).fetchall()
+
+    res = []
+    for o in orders:
+        od = dict(o)
+        items = conn.execute("SELECT * FROM order_items WHERE order_id = ?", (od["id"],)).fetchall()
+        od["items"] = [dict(i) for i in items]
+        res.append(od)
+
+    conn.close()
+    return res
+
+def mark_order_printed(order_id: int):
+    conn = get_db_connection()
+    conn.execute("UPDATE orders SET is_printed = 1 WHERE id = ?", (order_id,))
+    conn.commit()
+    conn.close()
+    return get_order_details(order_id)
+
 def get_open_orders():
     conn = get_db_connection()
     orders = conn.execute("""
@@ -928,16 +953,16 @@ def cancel_order(order_id: int, reason: str = "IPTAL"):
 
 def cancel_customer_qr_order(order_id: int):
     conn = get_db_connection()
-    row = conn.execute("SELECT id, order_status, order_number FROM orders WHERE id = ?", (order_id,)).fetchone()
+    row = conn.execute("SELECT id, order_status, order_number, is_printed FROM orders WHERE id = ?", (order_id,)).fetchone()
     if not row:
         conn.close()
         return {"status": "error", "message": "Sipariş bulunamadı"}
     
-    if row["order_status"] != "BEKLIYOR":
+    if row["order_status"] != "BEKLIYOR" or row["is_printed"] == 1:
         conn.close()
         return {
             "status": "error", 
-            "message": "Sipariş kasada onaylandığı için iptal edilemez. Lütfen görevliye danışınız."
+            "message": "Siparişinizin fişi yazdırılıp hazırlanmaya başladığı için iptal edilemez. Lütfen görevliye danışınız."
         }
     
     conn.execute("""

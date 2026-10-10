@@ -2055,44 +2055,74 @@ class POSApp {
     }, 3000);
   }
 
-  // --- QR Self-Ordering Auto-Print & QR Generator Methods ---
+  // --- QR Self-Ordering Direct Auto-Print & Poller ---
 
   startQROrderAutoPrintPoller() {
-    this.lastPendingCount = 0;
+    this.autoPrintQueue = [];
+    this.isAutoPrinting = false;
+    this.processedOrderIds = new Set();
+
+    // Check for new unprinted QR orders every 2 seconds
     setInterval(async () => {
       try {
-        const res = await fetch('/api/orders/pending-qr-approvals');
+        const res = await fetch('/api/orders/unprinted-qr-orders');
         if (!res.ok) return;
-        const pendingOrders = await res.json();
+        const unprintedOrders = await res.json();
 
         const badge = document.getElementById('qr-pending-badge');
         const countSpan = document.getElementById('qr-pending-count');
 
-        if (pendingOrders && pendingOrders.length > 0) {
-          if (badge) badge.style.display = 'inline-flex';
-          if (countSpan) countSpan.innerText = pendingOrders.length;
-
-          if (pendingOrders.length > this.lastPendingCount) {
-            this.playNotificationBeep();
-            this.showToast(`📱 YENİ KAREKOD SİPARİŞİ! (${pendingOrders.length} Onay Bekliyor)`, 'success');
+        if (unprintedOrders && unprintedOrders.length > 0) {
+          for (const order of unprintedOrders) {
+            if (!this.processedOrderIds.has(order.id) && !this.autoPrintQueue.some(o => o.id === order.id)) {
+              this.autoPrintQueue.push(order);
+            }
           }
-          this.lastPendingCount = pendingOrders.length;
-
-          const modal = document.getElementById('modal-qr-approval');
-          if (modal && modal.classList.contains('active')) {
-            this.renderQRPendingOrders(pendingOrders);
-          }
-
-        } else {
-          if (badge) badge.style.display = 'none';
-          this.lastPendingCount = 0;
+          this.processAutoPrintQueue();
         }
+
+        // Onay bekleyen badge'ini gizle çünkü artık otomatik basılıyor
+        if (badge) badge.style.display = 'none';
 
         this.fetchOpenOrders();
       } catch (err) {
         // Silent catch
       }
-    }, 3000);
+    }, 2000);
+  }
+
+  async processAutoPrintQueue() {
+    if (this.isAutoPrinting || this.autoPrintQueue.length === 0) return;
+    this.isAutoPrinting = true;
+
+    while (this.autoPrintQueue.length > 0) {
+      const order = this.autoPrintQueue.shift();
+      this.processedOrderIds.add(order.id);
+
+      try {
+        // 1. Arka planda basıldı olarak işaretle (tekrar basılmasın)
+        await fetch(`/api/orders/${order.id}/mark-printed`, { method: 'POST' });
+
+        // 2. Sesli uyarı ver
+        this.playNotificationBeep();
+
+        // 3. Bilgilendirme balonu göster
+        this.showToast(`⚡ KAREKOD SİPARİŞİ: [${order.customer_name}] Doğrudan Yazdırılıyor!`, 'success');
+
+        // 4. Fişi doğrudan yazıcıya gönder
+        this.printReceipt(order);
+
+        // 5. Açık masalar listesini yenile (Açık Masalar'da görünsün)
+        this.fetchOpenOrders();
+
+        // Arka arkaya gelen siparişler için yazıcı kuyruğunu rahatlat
+        await new Promise(r => setTimeout(r, 1200));
+      } catch (err) {
+        console.error('Doğrudan fiş basma hatası:', order.id, err);
+      }
+    }
+
+    this.isAutoPrinting = false;
   }
 
   async openQRPendingModal() {

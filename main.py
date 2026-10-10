@@ -301,6 +301,14 @@ def list_orders(
 def get_pending_qr_approvals():
     return database.get_pending_qr_orders()
 
+@app.get("/api/orders/unprinted-qr-orders")
+def get_unprinted_qr_orders_route():
+    return database.get_unprinted_qr_orders()
+
+@app.post("/api/orders/{order_id}/mark-printed")
+def mark_order_printed_route(order_id: int):
+    return database.mark_order_printed(order_id)
+
 @app.get("/api/orders/open")
 def get_open_orders_route():
     return database.get_open_orders()

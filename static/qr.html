@@ -1365,13 +1365,13 @@
             const statusDesc = document.getElementById('status-desc');
             const statusText = document.getElementById('success-order-status');
 
-            if (order.order_status === 'TAMAMLANDI') {
+            if (order.order_status === 'TAMAMLANDI' || order.is_printed === 1) {
               if (statusIcon) statusIcon.innerText = '🎉';
-              if (statusTitle) statusTitle.innerText = 'Siparişiniz Onaylandı!';
+              if (statusTitle) statusTitle.innerText = 'Siparişiniz Alındı & Fişiniz Basıldı!';
               const greeting = custName ? `Sayın <strong>${custName}</strong>, ` : '';
-              if (statusDesc) statusDesc.innerHTML = `${greeting}<strong>#${order.order_number}</strong> nolu siparişiniz kasada onaylandı ve fişiniz basıldı 🖨️.<br><br>Siparişiniz hazırlanıyor, hazır olduğunda isminizle sesleneceğiz! 🌶️`;
+              if (statusDesc) statusDesc.innerHTML = `${greeting}<strong>#${order.order_number}</strong> nolu siparişiniz kasada otomatik olarak fişe dönüştürüldü ve mutfağa iletildi 🖨️.<br><br>Siparişiniz hazırlanıyor, hazır olduğunda isminizle sesleneceğiz! 🌶️`;
               if (statusText) {
-                statusText.innerText = '🟢 Onaylandı - Hazırlanıyor 🌶️';
+                statusText.innerText = '🟢 Fiş Basıldı - Hazırlanıyor 🌶️';
                 statusText.style.color = '#059669';
               }
               const actionsEl = document.getElementById('qr-pending-actions');
