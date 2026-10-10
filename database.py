@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 from datetime import datetime
+import re
 
 # Cross-platform safe path initialization
 BASE_DIR = Path(__file__).resolve().parent
@@ -643,9 +644,108 @@ def generate_order_number():
     count = (row[0] if row else 0) + 1
     return f"OS-{date_str}-{count:04d}"
 
+def calculate_verified_order_pricing(cursor, order_data: dict):
+    source = order_data.get("source", "KASA")
+    order_type = order_data.get("order_type", "PAKET")
+    raw_items = order_data.get("items", [])
+
+    # Veritabanındaki ücretli opsiyon kalemlerini çek
+    opt_items_rows = cursor.execute("SELECT name, extra_price FROM option_items WHERE extra_price > 0").fetchall()
+    extra_options_map = {row["name"].strip().lower(): float(row["extra_price"]) for row in opt_items_rows}
+
+    verified_items = []
+    calculated_subtotal = 0.0
+
+    for item in raw_items:
+        p_id = item.get("product_id")
+        p_row = cursor.execute("SELECT id, name, price, price_masa FROM products WHERE id = ?", (p_id,)).fetchone()
+
+        if p_row:
+            product_name = p_row["name"]
+            # Masa veya Paket fiyatlandırması
+            if order_type == "MASA" and p_row["price_masa"] and float(p_row["price_masa"]) > 0:
+                base_price = float(p_row["price_masa"])
+            else:
+                base_price = float(p_row["price"])
+        else:
+            if source in ["TRENDYOL", "GETIR", "MIGROS"]:
+                base_price = float(item.get("unit_price", 0.0))
+                product_name = item.get("product_name") or "Dış Sipariş Ürünü"
+            else:
+                raise ValueError(f"Geçersiz veya bulunamayan ürün ID: {p_id}")
+
+        # Seçilen opsiyonların fiyatını doğrula
+        options_summary = (item.get("options_summary") or "").strip()
+        extra_price_total = 0.0
+
+        if options_summary:
+            # 1. Tanımlı opsiyon adı özette geçiyor mu?
+            for opt_name, opt_fee in extra_options_map.items():
+                if opt_name in options_summary.lower():
+                    extra_price_total += opt_fee
+
+            # 2. Opsiyon aşım ücreti veya dinamik ek ücret tag'leri (+₺XX.XX)
+            regex_matches = re.findall(r'\(\+₺([0-9]+(?:\.[0-9]+)?)\)', options_summary)
+            if regex_matches:
+                parsed_extras = sum(float(m) for m in regex_matches)
+                extra_price_total = max(extra_price_total, parsed_extras)
+
+        verified_unit_price = round(base_price + extra_price_total, 2)
+        quantity = max(1, int(item.get("quantity", 1)))
+        verified_total_price = round(verified_unit_price * quantity, 2)
+
+        calculated_subtotal += verified_total_price
+
+        verified_items.append({
+            "product_id": p_id,
+            "product_name": product_name,
+            "unit_price": verified_unit_price,
+            "quantity": quantity,
+            "options_summary": options_summary,
+            "total_price": verified_total_price
+        })
+
+    calculated_subtotal = round(calculated_subtotal, 2)
+
+    # İndirim doğrulaması
+    discount_amount = 0.0
+    discount_type = order_data.get("discount_type", "NONE")
+
+    if source == "KAREKOD_MUSTERI":
+        # Karekod müşterisi indirim uygulayamaz
+        discount_amount = 0.0
+        discount_type = "NONE"
+    else:
+        if discount_type == "IKRAM":
+            discount_amount = calculated_subtotal
+        elif discount_type in ["PERCENT", "TL"]:
+            req_discount = float(order_data.get("discount_amount", 0.0))
+            discount_amount = min(calculated_subtotal, max(0.0, req_discount))
+        else:
+            discount_amount = 0.0
+            discount_type = "NONE"
+
+    calculated_total_amount = max(0.0, round(calculated_subtotal - discount_amount, 2))
+
+    return {
+        "items": verified_items,
+        "subtotal": calculated_subtotal,
+        "discount_amount": discount_amount,
+        "discount_type": discount_type,
+        "total_amount": calculated_total_amount
+    }
+
 def create_order(order_data: dict):
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    # Sunucu taraflı güvenli fiyat ve tutar hesaplaması
+    pricing = calculate_verified_order_pricing(cursor, order_data)
+    items = pricing["items"]
+    subtotal = pricing["subtotal"]
+    discount_amount = pricing["discount_amount"]
+    discount_type = pricing["discount_type"]
+    total_amount = pricing["total_amount"]
 
     order_num = generate_order_number()
     phone = "".join(filter(str.isdigit, order_data.get("customer_phone") or "")) if order_data.get("customer_phone") else None
@@ -653,10 +753,6 @@ def create_order(order_data: dict):
     c_address = order_data.get("customer_address", "")
     source = order_data.get("source", "KASA")
     order_type = order_data.get("order_type", "PAKET")
-    subtotal = float(order_data.get("subtotal", 0.0))
-    discount_amount = float(order_data.get("discount_amount", 0.0))
-    discount_type = order_data.get("discount_type", "NONE")
-    total_amount = float(order_data.get("total_amount", 0.0))
     payment_method = order_data.get("payment_method", "NAKIT")
     note = order_data.get("note", "")
 
@@ -691,7 +787,6 @@ def create_order(order_data: dict):
 
     order_id = cursor.lastrowid
 
-    items = order_data.get("items", [])
     for item in items:
         cursor.execute("""
             INSERT INTO order_items (
@@ -699,12 +794,12 @@ def create_order(order_data: dict):
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (
             order_id,
-            item.get("product_id"),
-            item.get("product_name"),
-            float(item.get("unit_price", 0.0)),
-            int(item.get("quantity", 1)),
-            item.get("options_summary", ""),
-            float(item.get("total_price", 0.0))
+            item["product_id"],
+            item["product_name"],
+            item["unit_price"],
+            item["quantity"],
+            item["options_summary"],
+            item["total_price"]
         ))
 
     conn.commit()

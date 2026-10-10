@@ -872,7 +872,7 @@
 
       async fetchStoreSettings() {
         try {
-          const res = await fetch('/api/settings');
+          const res = await fetch('/api/public-settings');
           const settings = await res.json();
           if (settings) {
             const titleEl = document.getElementById('qr-brand-title');

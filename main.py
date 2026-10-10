@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from pathlib import Path
@@ -48,6 +48,116 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Cloudflare Tunnel & External Access Security Guard ---
+
+def is_tunnel_request(request: Request) -> bool:
+    """
+    HTTP isteğinin Cloudflare Tüneli (trycloudflare.com / proxy) üzerinden mi,
+    yoksa dükkandaki yerel ağdan (127.0.0.1 / yerel Wi-Fi) mı geldiğini tespit eder.
+    """
+    headers = request.headers
+
+    # 1. Cloudflare Edge tarafından eklenen zorunlu proxy başlıkları
+    if "cf-ray" in headers or "cf-connecting-ip" in headers or "cf-visitor" in headers or "cdn-loop" in headers:
+        return True
+
+    # 2. Host veya X-Forwarded-Host başlıkları
+    host = headers.get("host", "").split(":")[0].lower()
+    if "trycloudflare.com" in host or "onrender.com" in host or "vercel.app" in host:
+        return True
+
+    xf_host = headers.get("x-forwarded-host", "").split(":")[0].lower()
+    if "trycloudflare.com" in xf_host or "onrender.com" in xf_host or "vercel.app" in xf_host:
+        return True
+
+    return False
+
+def is_allowed_tunnel_route(path: str, method: str) -> bool:
+    """
+    Dış tünel (Cloudflare) üzerinden erişimine izin verilen KAREKOD rotaları (Whitelist).
+    Müşterinin menüyü görmesi ve sipariş vermesi haricinde tüm yönetim/kasa yolları engellenir.
+    """
+    if method == "OPTIONS":
+        return True
+
+    # 1. Karekod Arayüzü ve Statik Kaynaklar (CSS, JS, Görseller)
+    if path == "/qr" and method == "GET":
+        return True
+    if path.startswith("/static/") and method in ["GET", "HEAD"]:
+        return True
+
+    # 2. Müşteri Menü Okuma API'leri (Sadece GET)
+    if path == "/api/categories" and method == "GET":
+        return True
+    if path == "/api/products" and method == "GET":
+        return True
+    if path == "/api/options" and method == "GET":
+        return True
+    if path == "/api/public-settings" and method == "GET":
+        return True
+
+    # 3. Karekod Müşteri Siparişi Verme (Sadece POST)
+    if path == "/api/orders" and method == "POST":
+        return True
+
+    # 4. Sipariş Durumu Sorgulama (Maskelenmiş GET) ve Fiş Öncesi İptal (POST)
+    if re.match(r"^/api/orders/\d+$", path) and method == "GET":
+        return True
+    if re.match(r"^/api/orders/\d+/cancel-customer$", path) and method == "POST":
+        return True
+
+    return False
+
+@app.middleware("http")
+async def security_tunnel_isolation_middleware(request: Request, call_next):
+    # Dış tünel veya Cloudflare üzerinden gelen istekleri filtrele
+    if is_tunnel_request(request):
+        path = request.url.path
+        method = request.method.upper()
+
+        if not is_allowed_tunnel_route(path, method):
+            accept = request.headers.get("accept", "")
+            if path == "/" or "text/html" in accept:
+                html_forbidden = """<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>403 - Erişim Engellendi | O Ses POS</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0F172A; color: #F8FAFC; text-align: center; padding: 60px 20px; }
+    .card { max-width: 520px; margin: 0 auto; background: #1E293B; border-radius: 20px; padding: 36px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #334155; }
+    .icon { font-size: 3.2rem; margin-bottom: 15px; }
+    h1 { color: #EF4444; font-size: 1.5rem; margin-bottom: 12px; }
+    p { color: #94A3B8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 16px; }
+    .badge { display: inline-block; background: rgba(239, 68, 68, 0.15); color: #F87171; border: 1px solid rgba(239,68,68,0.3); padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
+    .qr-link { margin-top: 25px; display: inline-block; color: #38BDF8; text-decoration: none; font-weight: 600; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🔒</div>
+    <h1>403 - Kasa & Yönetim Erişimi Engellendi</h1>
+    <p>O Ses POS Kasa Ekranı ve Yönetim API'lerine internet tüneli üzerinden erişim güvenlik tedbiri olarak engellenmiştir.</p>
+    <p>Bu yönetim ekranlarına yalnızca işletme içindeki <strong>yerel kasa bilgisayarından (127.0.0.1)</strong> veya <strong>mağaza Wi-Fi ağından</strong> erişilebilir.</p>
+    <div class="badge">Sadece Yerel Ağ (LAN / Localhost)</div>
+    <div><a href="/qr" class="qr-link">📱 Müşteri Karekod Menüsüne Git →</a></div>
+  </div>
+</body>
+</html>"""
+                return Response(content=html_forbidden, status_code=403, media_type="text/html")
+
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "status": "forbidden",
+                    "detail": "Erişim Reddedildi (403): Bu yönetim ve kasa kaynağına sadece işletme içi yerel ağdan (127.0.0.1 veya Wi-Fi) erişilebilir."
+                }
+            )
+
+    response = await call_next(request)
+    return response
 
 # --- Pydantic Schemas ---
 
@@ -271,10 +381,20 @@ def delete_customer(phone: str):
 # --- Order Endpoints ---
 
 @app.post("/api/orders")
-def submit_order(order: OrderCreateSchema):
+def submit_order(order: OrderCreateSchema, request: Request):
     if not order.items:
         raise HTTPException(status_code=400, detail="Sipariş sepeti boş olamaz!")
     
+    # Dış tünelden geliyorsa kaynak ve sipariş parametrelerini zorunlu doğrula
+    if is_tunnel_request(request):
+        if order.source and order.source != "KAREKOD_MUSTERI":
+            raise HTTPException(status_code=403, detail="Dış tünel üzerinden sadece Karekod Müşteri siparişi verilebilir.")
+        order.source = "KAREKOD_MUSTERI"
+        order.order_status = "BEKLIYOR"
+        order.payment_method = "ÖDEME BEKLİYOR"
+        order.discount_amount = 0.0
+        order.discount_type = "NONE"
+
     order_dict = order.dict()
     result = database.create_order(order_dict)
     return result
@@ -341,10 +461,20 @@ def cancel_customer_qr_order_route(order_id: int):
 
 
 @app.get("/api/orders/{order_id}")
-def get_order(order_id: int):
+def get_order(order_id: int, request: Request):
     order = database.get_order_details(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
+    
+    if is_tunnel_request(request):
+        # Müşteri gizliliği: Tünel üzerinden sorgulandığında kişisel verileri maskele
+        return {
+            "id": order["id"],
+            "order_number": order["order_number"],
+            "order_status": order.get("order_status", "BEKLIYOR"),
+            "is_printed": order.get("is_printed", 0),
+            "created_at": order.get("created_at")
+        }
     return order
 
 # --- External Integration Endpoint ---
@@ -615,6 +745,15 @@ def api_stop_tunnel():
     return stop_tunnel_process()
 
 # --- Store Settings & Image Upload Endpoints ---
+
+@app.get("/api/public-settings")
+def get_public_settings():
+    settings = database.get_store_settings()
+    return {
+        "store_name": settings.get("store_name", "O SES ÇİĞKÖFTE"),
+        "store_subtitle": settings.get("store_subtitle", "HIZLI KASA & ADİSYON POS"),
+        "store_logo_url": settings.get("store_logo_url", "")
+    }
 
 @app.get("/api/settings")
 def get_settings():
