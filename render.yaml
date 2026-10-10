@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: oses-baglar
+    env: node
+    rootDir: redirector
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    autoDeploy: true
+    healthCheckPath: /health

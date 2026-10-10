@@ -2209,15 +2209,15 @@ class POSApp {
     if (!box) return;
 
     if (this.qrMode === 'custom') {
-      const savedDomain = localStorage.getItem('oses_qr_domain') || (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.vercel.app';
+      const savedDomain = localStorage.getItem('oses_qr_domain') || (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.onrender.com';
       box.innerHTML = `
         <div style="background: #ECFDF5; border: 1px solid #6EE7B7; padding: 12px 14px; border-radius: 12px; text-align: left;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-            <div style="font-weight: 800; color: #065F46; font-size: 0.92rem;">🔒 Ömür Boyu Sabit Vercel Adresi</div>
+            <div style="font-weight: 800; color: #065F46; font-size: 0.92rem;">🔒 Ömür Boyu Sabit Adres (Render .com)</div>
             <span style="background: #10B981; color: white; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 20px;">SABİT & KALICI</span>
           </div>
           <div style="font-size: 0.78rem; color: #047857; margin-bottom: 6px;">
-            Masalara basılacak bu QR adresleri <strong>yıllarca hiç değişmez</strong>.
+            Sonu <strong>.com</strong> ile biter, Xiaomi dahil tüm telefonlar doğrudan web sitesi olarak açar.
           </div>
           <input type="text" id="qr-custom-domain" class="form-input" style="padding: 7px 10px; font-size: 0.85rem; width: 100%; font-weight: 700; color: #065F46;" value="${savedDomain}" oninput="app.updateQRGeneratorPreview()" />
           
@@ -2297,8 +2297,8 @@ class POSApp {
       return `${base}?masa=${encodeURIComponent(tableName)}`;
     }
 
-    // Fallback to custom Vercel domain if available
-    const fallbackDomain = (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.vercel.app';
+    // Fallback to custom Render .com domain if available
+    const fallbackDomain = (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.onrender.com';
     return `${fallbackDomain}/qr?masa=${encodeURIComponent(tableName)}`;
   }
 
