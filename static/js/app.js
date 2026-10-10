@@ -2124,7 +2124,11 @@ class POSApp {
   }
 
   async syncActiveTunnelToVercel(tunnelUrl) {
-    const customDomain = localStorage.getItem('oses_qr_domain') || (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.vercel.app';
+    let customDomain = (this.storeSettings && this.storeSettings.qr_custom_domain) || localStorage.getItem('oses_qr_domain') || 'https://osesbaglar.onrender.com';
+    if (customDomain.includes('vercel.app')) {
+      customDomain = 'https://osesbaglar.onrender.com';
+      localStorage.setItem('oses_qr_domain', customDomain);
+    }
     if (!customDomain || !tunnelUrl) return;
     try {
       const cleanDomain = customDomain.split('?')[0].replace(/\/+$/, '');
@@ -2209,7 +2213,11 @@ class POSApp {
     if (!box) return;
 
     if (this.qrMode === 'custom') {
-      const savedDomain = localStorage.getItem('oses_qr_domain') || (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://osesbaglar.onrender.com';
+      let savedDomain = (this.storeSettings && this.storeSettings.qr_custom_domain) || localStorage.getItem('oses_qr_domain') || 'https://osesbaglar.onrender.com';
+      if (savedDomain.includes('vercel.app')) {
+        savedDomain = 'https://osesbaglar.onrender.com';
+        localStorage.setItem('oses_qr_domain', savedDomain);
+      }
       box.innerHTML = `
         <div style="background: #ECFDF5; border: 1px solid #6EE7B7; padding: 12px 14px; border-radius: 12px; text-align: left;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
@@ -2276,7 +2284,11 @@ class POSApp {
   getQRTargetUrl(tableName) {
     if (this.qrMode === 'custom') {
       const customDomainInput = document.getElementById('qr-custom-domain');
-      let base = customDomainInput && customDomainInput.value.trim() ? customDomainInput.value.trim() : (localStorage.getItem('oses_qr_domain') || (this.storeSettings && this.storeSettings.qr_custom_domain) || 'https://oses-baglar.vercel.app');
+      let base = customDomainInput && customDomainInput.value.trim() ? customDomainInput.value.trim() : ((this.storeSettings && this.storeSettings.qr_custom_domain) || localStorage.getItem('oses_qr_domain') || 'https://osesbaglar.onrender.com');
+      if (base.includes('vercel.app')) {
+        base = 'https://osesbaglar.onrender.com';
+        localStorage.setItem('oses_qr_domain', base);
+      }
       if (base) {
         localStorage.setItem('oses_qr_domain', base);
         base = base.split('?')[0].replace(/\/+$/, '');

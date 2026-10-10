@@ -80,7 +80,7 @@ class StoreSettingsSchema(BaseModel):
     gmp3_ip: Optional[str] = "192.168.1.100"
     gmp3_port: Optional[str] = "9090"
     gmp3_com_port: Optional[str] = "COM3"
-    qr_custom_domain: Optional[str] = "https://oses-baglar.vercel.app"
+    qr_custom_domain: Optional[str] = "https://osesbaglar.onrender.com"
 
 class GMP3PaymentRequestSchema(BaseModel):
     amount: float = Field(gt=0)
@@ -510,9 +510,11 @@ def start_tunnel_process():
 def sync_to_vercel_redirector(target_url: str):
     try:
         settings = database.get_store_settings()
-        vercel_url = settings.get("qr_custom_domain") or os.environ.get("VERCEL_URL") or "https://oses-baglar.vercel.app"
-        if vercel_url and vercel_url.strip():
-            url = vercel_url.strip().rstrip('/')
+        render_url = settings.get("qr_custom_domain") or os.environ.get("RENDER_URL") or "https://osesbaglar.onrender.com"
+        if render_url and "vercel.app" in render_url:
+            render_url = "https://osesbaglar.onrender.com"
+        if render_url and render_url.strip():
+            url = render_url.strip().rstrip('/')
             if not url.startswith('http'):
                 url = f"https://{url}"
             req = urllib.request.Request(
@@ -521,9 +523,9 @@ def sync_to_vercel_redirector(target_url: str):
                 headers={"Content-Type": "application/json"}
             )
             with urllib.request.urlopen(req, timeout=5) as response:
-                print(f"✅ Vercel akıllı yönlendirici güncellendi: {url} -> {target_url} (HTTP {response.status})")
+                print(f"✅ Akıllı yönlendirici güncellendi: {url} -> {target_url} (HTTP {response.status})")
     except Exception as e:
-        print(f"⚠️ Vercel güncelleme uyarısı: {e}")
+        print(f"⚠️ Yönlendirici güncelleme uyarısı: {e}")
 
 def stop_tunnel_process():
     global tunnel_process, tunnel_info

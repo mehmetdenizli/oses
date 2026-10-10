@@ -104,6 +104,8 @@ def init_db():
         cursor.execute("INSERT OR IGNORE INTO store_settings (key, value) VALUES ('gmp3_ip', '192.168.1.100')")
         cursor.execute("INSERT OR IGNORE INTO store_settings (key, value) VALUES ('gmp3_port', '9090')")
         cursor.execute("INSERT OR IGNORE INTO store_settings (key, value) VALUES ('gmp3_com_port', 'COM3')")
+        cursor.execute("INSERT OR IGNORE INTO store_settings (key, value) VALUES ('qr_custom_domain', 'https://osesbaglar.onrender.com')")
+        cursor.execute("UPDATE store_settings SET value = 'https://osesbaglar.onrender.com' WHERE key = 'qr_custom_domain' AND (value LIKE '%vercel.app%' OR value = '')")
 
     # Opsiyon Grupları (Garnitür ücretsiz limiti ve aşım ücreti kuralı)
     cursor.execute("""
