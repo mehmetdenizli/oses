@@ -178,13 +178,15 @@ try {
     $BgShortcut.Save()
     Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Arka Planda Baslat'"
 
-    # 2. Chrome Pencereli App Modu (Ekran Kaplar, Pencere Butonlari Var)
+    $PosProfilePath = Join-Path $env:LOCALAPPDATA "OSesPOS_ChromeProfile"
+
+    # 2. Chrome Pencereli App Modu (Ekran Kaplar, Pencere Butonlari Var - KUCULTULEBILIR)
     if ($ChromeExe) {
         $AppShortcutPath = Join-Path $DesktopPath "O Ses POS - Kasa Ekrani (Pencereli App).lnk"
         $AppShortcut = $WScriptShell.CreateShortcut($AppShortcutPath)
         $AppShortcut.TargetPath = $ChromeExe
-        $AppShortcut.Arguments = "--app=http://localhost:8000 --start-maximized --kiosk-printing"
-        $AppShortcut.Description = "POS Ekranini masaustu uygulamasi gibi acar (Kucult / Kapat butonlari aktif)."
+        $AppShortcut.Arguments = "--app=http://localhost:8000 --user-data-dir=`"$PosProfilePath`" --start-maximized --kiosk-printing"
+        $AppShortcut.Description = "POS Ekranini masaustu uygulamasi gibi acar (Kucult / Basa Al / Kapat butonlari aktif)."
         $AppShortcut.Save()
         Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Kasa Ekrani (Pencereli App)'"
 
@@ -192,7 +194,7 @@ try {
         $KioskShortcutPath = Join-Path $DesktopPath "O Ses POS - Kasa Ekrani (Tam Ekran Kiosk).lnk"
         $KioskShortcut = $WScriptShell.CreateShortcut($KioskShortcutPath)
         $KioskShortcut.TargetPath = $ChromeExe
-        $KioskShortcut.Arguments = "--kiosk http://localhost:8000 --kiosk-printing"
+        $KioskShortcut.Arguments = "--kiosk http://localhost:8000 --user-data-dir=`"$PosProfilePath`" --kiosk-printing"
         $KioskShortcut.Description = "Kasa dokunmatik ekranlar icin kilitli tam ekran modunda acar."
         $KioskShortcut.Save()
         Write-Success "Masaustu Kisayolu Olusturuldu: 'O Ses POS - Kasa Ekrani (Tam Ekran Kiosk)'"

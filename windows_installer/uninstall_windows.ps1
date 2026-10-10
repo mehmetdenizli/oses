@@ -128,6 +128,13 @@ try {
         Remove-Item $vbsPath -Force -ErrorAction SilentlyContinue
         Write-Success "run_background_windows.vbs dosyasi temizlendi."
     }
+
+    # POS Ozel Chrome Profilini Temizle
+    $PosProfilePath = Join-Path $env:LOCALAPPDATA "OSesPOS_ChromeProfile"
+    if (Test-Path $PosProfilePath) {
+        Remove-Item -Recurse -Force $PosProfilePath -ErrorAction SilentlyContinue
+        Write-Success "POS ozel Chrome profili temizlendi."
+    }
 } catch {
     Write-Warn "Masaustu kisayollari silinirken uyari: $_"
 }
